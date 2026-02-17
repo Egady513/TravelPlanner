@@ -17,8 +17,11 @@ export default function TripsPage() {
 
   // Load all trips on mount and when trip changes
   useEffect(() => {
-    const trips = storage.getAllTrips();
-    setAllTrips(trips);
+    const loadTrips = async () => {
+      const trips = await storage.getAllTrips();
+      setAllTrips(trips);
+    };
+    loadTrips();
   }, [trip]);
 
   const handleWizardComplete = (wizardData: any) => {
@@ -64,9 +67,6 @@ export default function TripsPage() {
     };
 
     setTrip(newTrip);
-    // Refresh trips list
-    const trips = storage.getAllTrips();
-    setAllTrips(trips);
     setShowWizard(false);
     router.push('/');
   };

@@ -1,182 +1,163 @@
 import { Trip } from '@/types';
+import { supabase } from './supabase';
 
-const STORAGE_KEY = 'road-trip-planner-trips';
-const ACTIVE_TRIP_KEY = 'road-trip-planner-active-trip';
+// Convert app Trip object → Supabase row
+function tripToRow(trip: Trip): Record<string, unknown> {
+  return {
+    id: trip.id,
+    name: trip.name,
+    start_date: trip.startDate.toISOString(),
+    end_date: trip.endDate.toISOString(),
+    is_loop_trip: trip.isLoopTrip,
+    people_count: trip.peopleCount,
+    has_dog: trip.hasDog,
+    trip_pace: trip.tripPace,
+    max_driving_hours: trip.maxDrivingHours,
+    driving_preference: trip.drivingPreference,
+    planning_style: trip.planningStyle,
+    budget_style: trip.budgetStyle,
+    splurge_nights: trip.splurgeNights,
+    is_new_camper: trip.isNewCamper,
+    total_distance: trip.totalDistance ?? null,
+    thumbnail_url: trip.thumbnailUrl ?? null,
+    starting_location: trip.startingLocation ?? null,
+    ending_location: trip.endingLocation ?? null,
+    lodging_preferences: trip.lodgingPreferences,
+    must_haves: trip.mustHaves,
+    days: trip.days.map(day => ({
+      ...day,
+      date: day.date?.toISOString() ?? null,
+    })),
+  };
+}
 
-// Helper function to serialize a trip
-const serializeTrip = (trip: Trip) => ({
-  ...trip,
-  startDate: trip.startDate.toISOString(),
-  endDate: trip.endDate.toISOString(),
-  createdAt: trip.createdAt?.toISOString(),
-  updatedAt: trip.updatedAt?.toISOString(),
-  days: trip.days.map(day => ({
-    ...day,
-    date: day.date?.toISOString(),
-  })),
-});
-
-// Helper function to deserialize a trip
-const deserializeTrip = (data: any): Trip => ({
-  ...data,
-  startDate: new Date(data.startDate),
-  endDate: new Date(data.endDate),
-  createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
-  updatedAt: data.updatedAt ? new Date(data.updatedAt) : undefined,
-  days: data.days.map((day: any) => ({
-    ...day,
-    date: day.date ? new Date(day.date) : undefined,
-  })),
-});
+// Convert Supabase row → app Trip object
+function rowToTrip(row: any): Trip {
+  return {
+    id: row.id,
+    name: row.name,
+    startDate: new Date(row.start_date),
+    endDate: new Date(row.end_date),
+    isLoopTrip: row.is_loop_trip,
+    peopleCount: row.people_count,
+    hasDog: row.has_dog,
+    tripPace: row.trip_pace,
+    maxDrivingHours: row.max_driving_hours,
+    drivingPreference: row.driving_preference,
+    planningStyle: row.planning_style,
+    budgetStyle: row.budget_style,
+    splurgeNights: row.splurge_nights,
+    isNewCamper: row.is_new_camper,
+    totalDistance: row.total_distance ?? undefined,
+    thumbnailUrl: row.thumbnail_url ?? undefined,
+    startingLocation: row.starting_location ?? undefined,
+    endingLocation: row.ending_location ?? undefined,
+    lodgingPreferences: row.lodging_preferences ?? [],
+    mustHaves: row.must_haves ?? [],
+    days: (row.days ?? []).map((day: any) => ({
+      ...day,
+      date: day.date ? new Date(day.date) : undefined,
+    })),
+    createdAt: row.created_at ? new Date(row.created_at) : undefined,
+    updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+  };
+}
 
 export const storage = {
   /**
-   * Save trip data to localStorage (supports multiple trips)
+   * Save (upsert) a trip to Supabase
    */
-  saveTrip: (trip: Trip): void => {
-    try {
-      // Update timestamps
-      const tripToSave = {
-        ...trip,
-        updatedAt: new Date(),
-        createdAt: trip.createdAt || new Date(),
-      };
+  saveTrip: async (trip: Trip): Promise<void> => {
+    const row = tripToRow(trip);
+    const { error } = await supabase
+      .from('trips')
+      .upsert(row, { onConflict: 'id' });
 
-      // Get all trips
-      const allTrips = storage.getAllTrips();
-      
-      // Update or add trip
-      const existingIndex = allTrips.findIndex(t => t.id === trip.id);
-      if (existingIndex >= 0) {
-        allTrips[existingIndex] = tripToSave;
-      } else {
-        allTrips.push(tripToSave);
-      }
-
-      // Save all trips
-      const serialized = JSON.stringify(allTrips.map(serializeTrip));
-      localStorage.setItem(STORAGE_KEY, serialized);
-
-      // Also save as active trip for backward compatibility
-      localStorage.setItem(ACTIVE_TRIP_KEY, JSON.stringify(serializeTrip(tripToSave)));
-    } catch (error) {
-      console.error('Failed to save trip to localStorage:', error);
+    if (error) {
+      console.error('Failed to save trip to Supabase:', error);
+      throw error;
     }
   },
 
   /**
-   * Load trip data from localStorage (returns active trip for backward compatibility)
+   * Load the most recently updated trip
    */
-  loadTrip: (): Trip | null => {
-    try {
-      // Try to load active trip first (for backward compatibility)
-      const activeTripSerialized = localStorage.getItem(ACTIVE_TRIP_KEY);
-      if (activeTripSerialized) {
-        const data = JSON.parse(activeTripSerialized);
-        return deserializeTrip(data);
-      }
+  loadTrip: async (): Promise<Trip | null> => {
+    const { data, error } = await supabase
+      .from('trips')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
 
-      // Otherwise, get the most recently updated trip
-      const allTrips = storage.getAllTrips();
-      if (allTrips.length === 0) return null;
-
-      // Return the most recently updated trip
-      return allTrips.sort((a, b) => {
-        const aTime = a.updatedAt?.getTime() || 0;
-        const bTime = b.updatedAt?.getTime() || 0;
-        return bTime - aTime;
-      })[0];
-    } catch (error) {
-      console.error('Failed to load trip from localStorage:', error);
+    if (error) {
+      if (error.code === 'PGRST116') return null; // no rows
+      console.error('Failed to load trip from Supabase:', error);
       return null;
     }
+
+    return rowToTrip(data);
   },
 
   /**
-   * Get all trips from localStorage
+   * Get all trips, most recent first
    */
-  getAllTrips: (): Trip[] => {
-    try {
-      const serialized = localStorage.getItem(STORAGE_KEY);
-      if (!serialized) return [];
+  getAllTrips: async (): Promise<Trip[]> => {
+    const { data, error } = await supabase
+      .from('trips')
+      .select('*')
+      .order('updated_at', { ascending: false });
 
-      const data = JSON.parse(serialized);
-      return Array.isArray(data) 
-        ? data.map(deserializeTrip)
-        : [];
-    } catch (error) {
-      console.error('Failed to load trips from localStorage:', error);
+    if (error) {
+      console.error('Failed to load trips from Supabase:', error);
       return [];
     }
+
+    return (data ?? []).map(rowToTrip);
   },
 
   /**
    * Get a specific trip by ID
    */
-  getTripById: (id: string): Trip | null => {
-    try {
-      const allTrips = storage.getAllTrips();
-      return allTrips.find(trip => trip.id === id) || null;
-    } catch (error) {
+  getTripById: async (id: string): Promise<Trip | null> => {
+    const { data, error } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
       console.error('Failed to get trip by ID:', error);
       return null;
     }
+
+    return rowToTrip(data);
   },
 
   /**
    * Delete a trip by ID
    */
-  deleteTrip: (id: string): void => {
-    try {
-      const allTrips = storage.getAllTrips();
-      const filtered = allTrips.filter(trip => trip.id !== id);
-      const serialized = JSON.stringify(filtered.map(serializeTrip));
-      localStorage.setItem(STORAGE_KEY, serialized);
+  deleteTrip: async (id: string): Promise<void> => {
+    const { error } = await supabase
+      .from('trips')
+      .delete()
+      .eq('id', id);
 
-      // If deleting the active trip, clear it
-      const activeTrip = localStorage.getItem(ACTIVE_TRIP_KEY);
-      if (activeTrip) {
-        const activeTripData = JSON.parse(activeTrip);
-        if (activeTripData.id === id) {
-          localStorage.removeItem(ACTIVE_TRIP_KEY);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to delete trip from localStorage:', error);
+    if (error) {
+      console.error('Failed to delete trip from Supabase:', error);
+      throw error;
     }
   },
 
   /**
-   * Clear trip data from localStorage
+   * Check if any trips exist
    */
-  clearTrip: (): void => {
-    try {
-      localStorage.removeItem(ACTIVE_TRIP_KEY);
-    } catch (error) {
-      console.error('Failed to clear trip from localStorage:', error);
-    }
-  },
+  hasTrip: async (): Promise<boolean> => {
+    const { count, error } = await supabase
+      .from('trips')
+      .select('id', { count: 'exact', head: true });
 
-  /**
-   * Clear all trips from localStorage
-   */
-  clearAllTrips: (): void => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(ACTIVE_TRIP_KEY);
-    } catch (error) {
-      console.error('Failed to clear all trips from localStorage:', error);
-    }
-  },
-
-  /**
-   * Check if trip data exists in localStorage
-   */
-  hasTrip: (): boolean => {
-    try {
-      return storage.getAllTrips().length > 0;
-    } catch (error) {
-      return false;
-    }
+    if (error) return false;
+    return (count ?? 0) > 0;
   },
 };

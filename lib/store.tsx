@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Trip, Activity, Day } from '@/types';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
+import { Trip, Activity } from '@/types';
 import { storage } from './storage';
 
 interface TripContextType {
@@ -14,6 +14,7 @@ interface TripContextType {
   clearTrip: () => void;
   selectedDay: number | null;
   setSelectedDay: (dayNumber: number | null) => void;
+  isSaving: boolean;
 }
 
 const TripContext = createContext<TripContextType | undefined>(undefined);
@@ -22,38 +23,66 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const [trip, setTripState] = useState<Trip | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Load trip from localStorage on mount
+  // Debounce timer ref for saves
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load trip from Supabase on mount
   useEffect(() => {
-    const savedTrip = storage.loadTrip();
-    if (savedTrip) {
-      setTripState(savedTrip);
-      // Auto-select first day
-      if (savedTrip.days.length > 0) {
-        setSelectedDay(1);
+    const loadInitialTrip = async () => {
+      try {
+        const savedTrip = await storage.loadTrip();
+        if (savedTrip) {
+          setTripState(savedTrip);
+          if (savedTrip.days.length > 0) {
+            setSelectedDay(1);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load trip on mount:', err);
       }
-    }
-    setIsInitialized(true);
+      setIsInitialized(true);
+    };
+
+    loadInitialTrip();
   }, []);
 
-  // Save trip to localStorage whenever it changes
+  // Debounced save to Supabase whenever trip changes
   useEffect(() => {
-    if (isInitialized && trip) {
-      storage.saveTrip(trip);
+    if (!isInitialized || !trip) return;
+
+    // Clear any pending save
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
     }
+
+    // Debounce: save 500ms after last change (avoids hammering DB during rapid edits)
+    saveTimerRef.current = setTimeout(async () => {
+      setIsSaving(true);
+      try {
+        await storage.saveTrip(trip);
+      } catch (err) {
+        console.error('Failed to save trip:', err);
+      }
+      setIsSaving(false);
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
   }, [trip, isInitialized]);
 
-  const setTrip = (newTrip: Trip) => {
+  const setTrip = useCallback((newTrip: Trip) => {
     setTripState(newTrip);
-    // Auto-select first day when creating a new trip
-    if (newTrip.days.length > 0 && selectedDay === null) {
-      setSelectedDay(1);
+    if (newTrip.days.length > 0) {
+      setSelectedDay(prev => prev ?? 1);
     }
-  };
+  }, []);
 
-  const addActivity = (activity: Activity) => {
-    if (!trip) return;
-
+  const addActivity = useCallback((activity: Activity) => {
     setTripState(prev => {
       if (!prev) return prev;
 
@@ -69,11 +98,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
       return { ...prev, days: updatedDays };
     });
-  };
+  }, []);
 
-  const removeActivity = (activityId: string) => {
-    if (!trip) return;
-
+  const removeActivity = useCallback((activityId: string) => {
     setTripState(prev => {
       if (!prev) return prev;
 
@@ -84,11 +111,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
       return { ...prev, days: updatedDays };
     });
-  };
+  }, []);
 
-  const updateActivity = (activityId: string, updates: Partial<Activity>) => {
-    if (!trip) return;
-
+  const updateActivity = useCallback((activityId: string, updates: Partial<Activity>) => {
     setTripState(prev => {
       if (!prev) return prev;
 
@@ -103,11 +128,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
       return { ...prev, days: updatedDays };
     });
-  };
+  }, []);
 
-  const reorderActivities = (dayNumber: number, activities: Activity[]) => {
-    if (!trip) return;
-
+  const reorderActivities = useCallback((dayNumber: number, activities: Activity[]) => {
     setTripState(prev => {
       if (!prev) return prev;
 
@@ -119,13 +142,12 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
       return { ...prev, days: updatedDays };
     });
-  };
+  }, []);
 
-  const clearTrip = () => {
+  const clearTrip = useCallback(() => {
     setTripState(null);
     setSelectedDay(null);
-    storage.clearTrip();
-  };
+  }, []);
 
   return (
     <TripContext.Provider
@@ -139,6 +161,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         clearTrip,
         selectedDay,
         setSelectedDay,
+        isSaving,
       }}
     >
       {children}
