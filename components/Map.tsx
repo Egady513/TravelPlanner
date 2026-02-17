@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
+import { Loader } from '@googlemaps/js-api-loader';
 import { useTrip } from '@/lib/store';
 import { Activity, Coordinates, ActivityType } from '@/types';
 import AddActivityForm from './AddActivityForm';
@@ -26,8 +26,8 @@ const markerColors: Record<ActivityType, string> = {
 // Default map center (USA center) - defined outside component to prevent recreating on each render
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 };
 
-// Track if setOptions has been called to avoid calling it multiple times
-let mapsApiInitialized = false;
+// Singleton Loader instance to avoid re-creating on each render
+let loaderInstance: Loader | null = null;
 
 export default function TripMap(props: MapProps = {}) {
   const {
@@ -86,22 +86,22 @@ export default function TripMap(props: MapProps = {}) {
           return;
         }
 
-        // Set API options using the new functional API (only once globally)
-        if (!mapsApiInitialized) {
-          setOptions({
-            key: apiKey,
-            v: 'weekly', // loader expects "v" per APIOptions
+        // Create loader singleton
+        if (!loaderInstance) {
+          loaderInstance = new Loader({
+            apiKey,
+            version: 'weekly',
+            libraries: ['places', 'geometry', 'marker'],
           });
-          mapsApiInitialized = true;
         }
 
         // Load maps library with timeout so we don't hang forever
-        const mapsPromise = importLibrary('maps') as Promise<{ Map: new (el: HTMLElement, opts: object) => unknown }>;
+        const mapsPromise = loaderInstance.importLibrary('maps');
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('MAP_LOAD_TIMEOUT')), LOAD_TIMEOUT_MS)
         );
 
-        const { Map } = await Promise.race([mapsPromise, timeoutPromise]);
+        const { Map } = await Promise.race([mapsPromise, timeoutPromise]) as any;
 
         if (cancelled || !mapRef.current) return;
 
@@ -131,12 +131,7 @@ export default function TripMap(props: MapProps = {}) {
           setLoading(false);
         }
 
-        // Load places, geometry, marker in background (for autocomplete, polylines, etc.)
-        Promise.all([
-          importLibrary('places'),
-          importLibrary('geometry'),
-          importLibrary('marker'),
-        ]).catch((e) => console.warn('Background map libraries failed to load:', e));
+        // Places, geometry, marker already requested via Loader constructor libraries option
       } catch (err: any) {
         console.error('Error loading Google Maps:', err);
 
