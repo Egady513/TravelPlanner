@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader } from '@googlemaps/js-api-loader';
 import { useTrip } from '@/lib/store';
 import { Activity, Coordinates, ActivityType } from '@/types';
 import AddActivityForm from './AddActivityForm';
@@ -23,11 +22,42 @@ const markerColors: Record<ActivityType, string> = {
   park: '#059669', // dark green
 };
 
-// Default map center (USA center) - defined outside component to prevent recreating on each render
+// Default map center (USA center)
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 };
 
-// Singleton Loader instance to avoid re-creating on each render
-let loaderInstance: Loader | null = null;
+// Singleton promise so the script loads only once across all renders/mounts
+let googleMapsPromise: Promise<typeof google.maps> | null = null;
+
+function loadGoogleMaps(apiKey: string): Promise<typeof google.maps> {
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise((resolve, reject) => {
+    // If already loaded (e.g. HMR), resolve immediately
+    if (window.google?.maps?.Map) {
+      resolve(window.google.maps);
+      return;
+    }
+
+    const callbackName = '__initGoogleMaps_' + Date.now();
+    (window as any)[callbackName] = () => {
+      delete (window as any)[callbackName];
+      resolve(window.google.maps);
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,marker&callback=${callbackName}&v=weekly`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      googleMapsPromise = null;
+      delete (window as any)[callbackName];
+      reject(new Error('Google Maps script failed to load. Check your API key and internet connection.'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
 
 export default function TripMap(props: MapProps = {}) {
   const {
@@ -36,11 +66,10 @@ export default function TripMap(props: MapProps = {}) {
     className = 'w-full h-full'
   } = props;
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<any>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const [showSlowLoadHint, setShowSlowLoadHint] = useState(false);
 
   // Form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,7 +79,7 @@ export default function TripMap(props: MapProps = {}) {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   // Markers
-  const markersRef = useRef<Map<string, any>>(new Map());
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
 
   // Polylines for routes
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
@@ -59,53 +88,25 @@ export default function TripMap(props: MapProps = {}) {
 
   // Initialize map
   useEffect(() => {
-    const LOAD_TIMEOUT_MS = 20000; // 20 seconds
     let cancelled = false;
 
     const initMap = async () => {
       try {
         const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-        // Debug: Log API key status (without exposing the actual key)
-        console.log('Google Maps API Key Status:', apiKey ? `Loaded (${apiKey.substring(0, 10)}...)` : 'Missing');
-
-        if (!apiKey) {
+        if (!apiKey || apiKey === 'your_api_key_here' || apiKey.length < 20) {
           if (!cancelled) {
-            setError('Google Maps API key is missing. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file and restart the dev server.');
+            setError('Google Maps API key is missing or invalid. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local and restart the dev server.');
             setLoading(false);
           }
           return;
         }
 
-        // Check if API key looks valid (basic validation)
-        if (apiKey === 'your_api_key_here' || apiKey.length < 20) {
-          if (!cancelled) {
-            setError('Invalid API key format. Please check your NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in .env.local file.');
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Create loader singleton
-        if (!loaderInstance) {
-          loaderInstance = new Loader({
-            apiKey,
-            version: 'weekly',
-            libraries: ['places', 'geometry', 'marker'],
-          });
-        }
-
-        // Load maps library with timeout so we don't hang forever
-        const mapsPromise = loaderInstance.importLibrary('maps');
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('MAP_LOAD_TIMEOUT')), LOAD_TIMEOUT_MS)
-        );
-
-        const { Map } = await Promise.race([mapsPromise, timeoutPromise]) as any;
+        const maps = await loadGoogleMaps(apiKey);
 
         if (cancelled || !mapRef.current) return;
 
-        const mapInstance = new Map(mapRef.current, {
+        const mapInstance = new maps.Map(mapRef.current, {
           center,
           zoom,
           mapTypeControl: true,
@@ -114,13 +115,10 @@ export default function TripMap(props: MapProps = {}) {
           zoomControl: true,
         });
 
-        // Add click listener for adding activities
+        // Click to add activity
         mapInstance.addListener('click', (e: google.maps.MapMouseEvent) => {
           if (e.latLng) {
-            setClickedCoords({
-              lat: e.latLng.lat(),
-              lng: e.latLng.lng(),
-            });
+            setClickedCoords({ lat: e.latLng.lat(), lng: e.latLng.lng() });
             setShowAddForm(true);
             setSelectedActivity(null);
           }
@@ -130,61 +128,19 @@ export default function TripMap(props: MapProps = {}) {
           setMap(mapInstance);
           setLoading(false);
         }
-
-        // Places, geometry, marker already requested via Loader constructor libraries option
       } catch (err: any) {
         console.error('Error loading Google Maps:', err);
-
-        let errorMessage = 'Failed to load Google Maps. ';
-
-        if (err?.message === 'MAP_LOAD_TIMEOUT') {
-          errorMessage += 'The map took too long to load. ';
-          errorMessage += 'Check: (1) API key has "Maps JavaScript API" enabled, (2) Billing is on for your Google Cloud project, (3) Application restrictions allow this site (e.g. localhost). ';
-          errorMessage += 'Then click Retry below.';
-        } else if (err?.message) {
-          if (err.message.includes('InvalidKeyMapError') || err.message.includes('ApiNotActivatedMapError')) {
-            errorMessage += 'API key is invalid or the required APIs are not enabled. ';
-            errorMessage += 'Please enable "Maps JavaScript API" in Google Cloud Console.';
-          } else if (err.message.includes('RefererNotAllowedMapError')) {
-            errorMessage += 'API key has referrer restrictions. ';
-            errorMessage += 'Add your domain or http://localhost:* to allowed referrers in Google Cloud Console.';
-          } else if (err.message.includes('BillingNotEnabledMapError')) {
-            errorMessage += 'Billing is not enabled for your Google Cloud project. Enable it in Google Cloud Console.';
-          } else {
-            errorMessage += err.message;
-          }
-        } else {
-          errorMessage += 'Check your API key, internet connection, and billing.';
-        }
-
         if (!cancelled) {
-          setError(errorMessage);
+          setError(err?.message || 'Failed to load Google Maps. Check your API key and internet connection.');
           setLoading(false);
         }
       }
     };
 
     initMap();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryKey]);
-
-  // If we're still loading after 12s, show a hint and "Stop & retry" so user isn't stuck
-  useEffect(() => {
-    if (!loading || error) return;
-    const t = setTimeout(() => setShowSlowLoadHint(true), 12000);
-    return () => clearTimeout(t);
-  }, [loading, error]);
-
-  const handleStopAndRetry = () => {
-    setShowSlowLoadHint(false);
-    setError(
-      'The map took too long to load. Check: (1) Maps JavaScript API is enabled, (2) Billing is on for your Google Cloud project, (3) Under Keys, your API key has Application restrictions that allow this site (e.g. http://localhost:*). Then click Retry.'
-    );
-    setLoading(false);
-  };
 
   // Update markers when trip activities change
   useEffect(() => {
@@ -194,10 +150,8 @@ export default function TripMap(props: MapProps = {}) {
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current.clear();
 
-    // Get all activities
     const allActivities = trip.days.flatMap(day => day.activities);
 
-    // Create markers for each activity
     allActivities.forEach(activity => {
       const marker = new google.maps.Marker({
         position: activity.coordinates,
@@ -213,7 +167,6 @@ export default function TripMap(props: MapProps = {}) {
         },
       });
 
-      // Add click listener to show info window
       marker.addListener('click', () => {
         setSelectedActivity(activity);
         setShowAddForm(false);
@@ -222,12 +175,10 @@ export default function TripMap(props: MapProps = {}) {
       markersRef.current.set(activity.id, marker);
     });
 
-    // Fit map to show all markers if there are any
+    // Fit map to show all markers
     if (allActivities.length > 0) {
       const bounds = new google.maps.LatLngBounds();
-      allActivities.forEach(activity => {
-        bounds.extend(activity.coordinates);
-      });
+      allActivities.forEach(activity => bounds.extend(activity.coordinates));
       map.fitBounds(bounds);
     }
   }, [map, trip]);
@@ -236,32 +187,18 @@ export default function TripMap(props: MapProps = {}) {
   useEffect(() => {
     if (!map || !trip) return;
 
-    // Clear existing polylines
     polylinesRef.current.forEach(polyline => polyline.setMap(null));
     polylinesRef.current = [];
 
-    // Color palette for different days
-    const dayColors = [
-      '#ef4444', // red
-      '#3b82f6', // blue
-      '#10b981', // green
-      '#f59e0b', // amber
-      '#8b5cf6', // violet
-      '#ec4899', // pink
-      '#14b8a6', // teal
-    ];
+    const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-    // Draw routes for each day
     trip.days.forEach((day, index) => {
-      if (day.activities.length < 2) return; // Need at least 2 points for a route
-
-      const path = day.activities.map(activity => activity.coordinates);
-      const color = dayColors[index % dayColors.length];
+      if (day.activities.length < 2) return;
 
       const polyline = new google.maps.Polyline({
-        path,
+        path: day.activities.map(a => a.coordinates),
         geodesic: true,
-        strokeColor: color,
+        strokeColor: dayColors[index % dayColors.length],
         strokeOpacity: 0.7,
         strokeWeight: 3,
         map,
@@ -280,10 +217,10 @@ export default function TripMap(props: MapProps = {}) {
           <button
             type="button"
             onClick={() => {
+              googleMapsPromise = null; // allow re-attempt
               setError(null);
-              setShowSlowLoadHint(false);
               setLoading(true);
-              setRetryKey((k) => k + 1);
+              setRetryKey(k => k + 1);
             }}
             className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
           >
@@ -300,20 +237,6 @@ export default function TripMap(props: MapProps = {}) {
         <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading map...</p>
-          {showSlowLoadHint && (
-            <div className="mt-6 max-w-sm mx-auto">
-              <p className="text-sm text-gray-600 mb-3">
-                Taking a while? The map may not load if API key restrictions or billing aren’t set up.
-              </p>
-              <button
-                type="button"
-                onClick={handleStopAndRetry}
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Stop & show retry
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
