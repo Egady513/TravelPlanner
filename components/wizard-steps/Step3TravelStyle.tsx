@@ -8,10 +8,15 @@ interface Step3Props {
 }
 
 export default function Step3TravelStyle({ data, onUpdate }: Step3Props) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    tripPace: string;
+    maxDrivingHours: number;
+    drivingPreference?: 'early' | 'late' | 'flexible';
+    planningStyle: string;
+  }>({
     tripPace: data.tripPace || 'balanced',
     maxDrivingHours: data.maxDrivingHours || 6,
-    drivingPreference: data.drivingPreference || 'flexible',
+    drivingPreference: data.drivingPreference ?? undefined,
     planningStyle: data.planningStyle || 'help',
   });
 
@@ -39,10 +44,10 @@ export default function Step3TravelStyle({ data, onUpdate }: Step3Props) {
     },
   ];
 
-  const drivingOptions = [
-    { value: 'early', label: 'Early starts' },
-    { value: 'late', label: 'Late arrivals OK' },
-    { value: 'flexible', label: 'Flexible' },
+  const drivingOptions: { value: 'early' | 'late' | 'flexible'; label: string; message: string }[] = [
+    { value: 'early', label: 'Early starts', message: "We'll suggest hitting the road early and prioritize morning activities." },
+    { value: 'late', label: 'Late arrivals OK', message: "We'll allow for later departures and evening arrivals at stops." },
+    { value: 'flexible', label: 'Flexible', message: "We'll balance drive times with your pace; you can adjust day by day." },
   ];
 
   const planningOptions = [
@@ -130,6 +135,11 @@ export default function Step3TravelStyle({ data, onUpdate }: Step3Props) {
             </button>
           ))}
         </div>
+        {formData.drivingPreference && (
+          <p className="mt-3 text-sm text-gray-600">
+            {drivingOptions.find((o) => o.value === formData.drivingPreference)?.message}
+          </p>
+        )}
       </div>
 
       {/* Planning Style */}

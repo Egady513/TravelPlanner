@@ -60,6 +60,11 @@ export default function Step2WhosGoing({ data, onUpdate }: Step2Props) {
             </span>
           </div>
         </label>
+        {formData.hasDog && (
+          <p className="mt-3 pl-1 text-sm text-gray-600">
+            We&apos;ll highlight dog-friendly spots, suggest lodging when trails don&apos;t allow dogs, and help you balance camping vs hotel nights for your pup.
+          </p>
+        )}
       </div>
     </div>
   );

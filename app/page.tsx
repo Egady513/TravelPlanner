@@ -8,6 +8,7 @@ import TripWizard from "@/components/TripWizard";
 import TripMap from "@/components/Map";
 import Sidebar from "@/components/Sidebar";
 import { Trip } from '@/types';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export default function Home() {
   const { trip, setTrip } = useTrip();
@@ -15,13 +16,13 @@ export default function Home() {
   const router = useRouter();
 
   const handleWizardComplete = (wizardData: any) => {
-    // Convert date strings to Date objects
-    const startDate = new Date(wizardData.startDate);
-    const endDate = new Date(wizardData.endDate);
+    // Parse as local dates so 6/2 stays 6/2 (not UTC which can become 6/1)
+    const startDate = parseLocalDate(wizardData.startDate);
+    const endDate = parseLocalDate(wizardData.endDate);
 
     // Generate days from date range
     const days = [];
-    const currentDate = new Date(startDate);
+    const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     let dayNumber = 1;
 
     while (currentDate <= endDate) {

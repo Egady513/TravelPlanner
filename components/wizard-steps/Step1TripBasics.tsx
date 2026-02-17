@@ -18,7 +18,11 @@ export default function Step1TripBasics({ data, onUpdate }: Step1Props) {
   });
 
   const handleChange = (field: string, value: any) => {
-    const updated = { ...formData, [field]: value };
+    let updated = { ...formData, [field]: value };
+    // If start date is after end date, clear end date so the range stays valid
+    if (field === 'startDate' && value && formData.endDate && value > formData.endDate) {
+      updated = { ...updated, endDate: '' };
+    }
     setFormData(updated);
     onUpdate(updated);
   };
@@ -62,6 +66,7 @@ export default function Step1TripBasics({ data, onUpdate }: Step1Props) {
           <input
             type="date"
             id="endDate"
+            min={formData.startDate || undefined}
             value={formData.endDate}
             onChange={(e) => handleChange('endDate', e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"

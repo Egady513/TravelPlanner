@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader } from '@googlemaps/js-api-loader';
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
 import { useTrip } from '@/lib/store';
 import { Activity, Coordinates, ActivityType } from '@/types';
 import AddActivityForm from './AddActivityForm';
@@ -26,6 +26,9 @@ const markerColors: Record<ActivityType, string> = {
 // Default map center (USA center) - defined outside component to prevent recreating on each render
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 };
 
+// Track if setOptions has been called to avoid calling it multiple times
+let mapsApiInitialized = false;
+
 export default function TripMap(props: MapProps = {}) {
   const {
     center = DEFAULT_CENTER,
@@ -36,6 +39,8 @@ export default function TripMap(props: MapProps = {}) {
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+  const [showSlowLoadHint, setShowSlowLoadHint] = useState(false);
 
   // Form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -54,25 +59,51 @@ export default function TripMap(props: MapProps = {}) {
 
   // Initialize map
   useEffect(() => {
+    const LOAD_TIMEOUT_MS = 20000; // 20 seconds
+    let cancelled = false;
+
     const initMap = async () => {
       try {
         const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+        // Debug: Log API key status (without exposing the actual key)
+        console.log('Google Maps API Key Status:', apiKey ? `Loaded (${apiKey.substring(0, 10)}...)` : 'Missing');
+
         if (!apiKey) {
-          setError('Google Maps API key is missing. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file.');
-          setLoading(false);
+          if (!cancelled) {
+            setError('Google Maps API key is missing. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file and restart the dev server.');
+            setLoading(false);
+          }
           return;
         }
 
-        const loader = new Loader({
-          apiKey,
-          version: 'weekly',
-          libraries: ['places', 'geometry', 'marker']
-        });
+        // Check if API key looks valid (basic validation)
+        if (apiKey === 'your_api_key_here' || apiKey.length < 20) {
+          if (!cancelled) {
+            setError('Invalid API key format. Please check your NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in .env.local file.');
+            setLoading(false);
+          }
+          return;
+        }
 
-        const { Map } = await loader.importLibrary('maps') as any;
+        // Set API options using the new functional API (only once globally)
+        if (!mapsApiInitialized) {
+          setOptions({
+            key: apiKey,
+            v: 'weekly', // loader expects "v" per APIOptions
+          });
+          mapsApiInitialized = true;
+        }
 
-        if (mapRef.current) {
+        // Load maps library with timeout so we don't hang forever
+        const mapsPromise = importLibrary('maps') as Promise<{ Map: new (el: HTMLElement, opts: object) => unknown }>;
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('MAP_LOAD_TIMEOUT')), LOAD_TIMEOUT_MS)
+        );
+
+        const { Map } = await Promise.race([mapsPromise, timeoutPromise]);
+
+        if (cancelled || !mapRef.current) return;
           const mapInstance = new Map(mapRef.current, {
             center,
             zoom,
@@ -94,19 +125,71 @@ export default function TripMap(props: MapProps = {}) {
             }
           });
 
-          setMap(mapInstance);
+          if (!cancelled) {
+            setMap(mapInstance);
+            setLoading(false);
+          }
+
+          // Load places, geometry, marker in background (for autocomplete, polylines, etc.)
+          Promise.all([
+            importLibrary('places'),
+            importLibrary('geometry'),
+            importLibrary('marker'),
+          ]).catch((e) => console.warn('Background map libraries failed to load:', e));
+        }
+      } catch (err: any) {
+        console.error('Error loading Google Maps:', err);
+
+        let errorMessage = 'Failed to load Google Maps. ';
+
+        if (err?.message === 'MAP_LOAD_TIMEOUT') {
+          errorMessage += 'The map took too long to load. ';
+          errorMessage += 'Check: (1) API key has "Maps JavaScript API" enabled, (2) Billing is on for your Google Cloud project, (3) Application restrictions allow this site (e.g. localhost). ';
+          errorMessage += 'Then click Retry below.';
+        } else if (err?.message) {
+          if (err.message.includes('InvalidKeyMapError') || err.message.includes('ApiNotActivatedMapError')) {
+            errorMessage += 'API key is invalid or the required APIs are not enabled. ';
+            errorMessage += 'Please enable "Maps JavaScript API" in Google Cloud Console.';
+          } else if (err.message.includes('RefererNotAllowedMapError')) {
+            errorMessage += 'API key has referrer restrictions. ';
+            errorMessage += 'Add your domain or http://localhost:* to allowed referrers in Google Cloud Console.';
+          } else if (err.message.includes('BillingNotEnabledMapError')) {
+            errorMessage += 'Billing is not enabled for your Google Cloud project. Enable it in Google Cloud Console.';
+          } else {
+            errorMessage += err.message;
+          }
+        } else {
+          errorMessage += 'Check your API key, internet connection, and billing.';
+        }
+
+        if (!cancelled) {
+          setError(errorMessage);
           setLoading(false);
         }
-      } catch (err) {
-        console.error('Error loading Google Maps:', err);
-        setError('Failed to load Google Maps. Please check your API key and internet connection.');
-        setLoading(false);
       }
     };
 
     initMap();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
+
+  // If we're still loading after 12s, show a hint and "Stop & retry" so user isn't stuck
+  useEffect(() => {
+    if (!loading || error) return;
+    const t = setTimeout(() => setShowSlowLoadHint(true), 12000);
+    return () => clearTimeout(t);
+  }, [loading, error]);
+
+  const handleStopAndRetry = () => {
+    setShowSlowLoadHint(false);
+    setError(
+      'The map took too long to load. Check: (1) Maps JavaScript API is enabled, (2) Billing is on for your Google Cloud project, (3) Under Keys, your API key has Application restrictions that allow this site (e.g. http://localhost:*). Then click Retry.'
+    );
+    setLoading(false);
+  };
 
   // Update markers when trip activities change
   useEffect(() => {
@@ -196,9 +279,21 @@ export default function TripMap(props: MapProps = {}) {
   if (error) {
     return (
       <div className={`${className} flex items-center justify-center bg-gray-100 rounded-lg`}>
-        <div className="text-center p-8">
+        <div className="text-center p-8 max-w-md">
           <p className="text-red-600 font-semibold mb-2">Map Error</p>
-          <p className="text-sm text-gray-600">{error}</p>
+          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setShowSlowLoadHint(false);
+              setLoading(true);
+              setRetryKey((k) => k + 1);
+            }}
+            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -206,10 +301,24 @@ export default function TripMap(props: MapProps = {}) {
 
   if (loading) {
     return (
-      <div className={`${className} flex items-center justify-center bg-gray-100 rounded-lg`}>
-        <div className="text-center">
+      <div className={`${className} flex items-center justify-center bg-gray-100 rounded-lg min-h-[200px]`}>
+        <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading map...</p>
+          {showSlowLoadHint && (
+            <div className="mt-6 max-w-sm mx-auto">
+              <p className="text-sm text-gray-600 mb-3">
+                Taking a while? The map may not load if API key restrictions or billing aren’t set up.
+              </p>
+              <button
+                type="button"
+                onClick={handleStopAndRetry}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Stop & show retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

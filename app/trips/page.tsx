@@ -1,23 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTrip } from '@/lib/store';
+import { storage } from '@/lib/storage';
 import TripWizard from '@/components/TripWizard';
 import { Trip } from '@/types';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export default function TripsPage() {
   const { trip, setTrip } = useTrip();
   const [showWizard, setShowWizard] = useState(false);
+  const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const router = useRouter();
 
+  // Load all trips on mount and when trip changes
+  useEffect(() => {
+    const trips = storage.getAllTrips();
+    setAllTrips(trips);
+  }, [trip]);
+
   const handleWizardComplete = (wizardData: any) => {
-    const startDate = new Date(wizardData.startDate);
-    const endDate = new Date(wizardData.endDate);
+    const startDate = parseLocalDate(wizardData.startDate);
+    const endDate = parseLocalDate(wizardData.endDate);
 
     const days = [];
-    const currentDate = new Date(startDate);
+    const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     let dayNumber = 1;
 
     while (currentDate <= endDate) {
@@ -55,6 +64,9 @@ export default function TripsPage() {
     };
 
     setTrip(newTrip);
+    // Refresh trips list
+    const trips = storage.getAllTrips();
+    setAllTrips(trips);
     setShowWizard(false);
     router.push('/');
   };
@@ -78,8 +90,8 @@ export default function TripsPage() {
     return 'Past trip';
   };
 
-  // Mock trips data (in real app, would load all trips from storage)
-  const trips = trip ? [trip] : [];
+  // Use all trips from storage
+  const trips = allTrips.length > 0 ? allTrips : (trip ? [trip] : []);
 
   return (
     <>
@@ -155,10 +167,13 @@ export default function TripsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {trips.map((tripItem) => (
-                <Link
+                <div
                   key={tripItem.id}
-                  href="/"
-                  className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden"
+                  onClick={() => {
+                    setTrip(tripItem);
+                    router.push('/');
+                  }}
+                  className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
                 >
                   {/* Trip Image */}
                   <div className="relative h-48 bg-gradient-to-br from-orange-400 to-orange-600">
@@ -196,7 +211,7 @@ export default function TripsPage() {
                       {tripItem.hasDog && <span>🐕</span>}
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
