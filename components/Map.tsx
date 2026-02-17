@@ -104,39 +104,39 @@ export default function TripMap(props: MapProps = {}) {
         const { Map } = await Promise.race([mapsPromise, timeoutPromise]);
 
         if (cancelled || !mapRef.current) return;
-          const mapInstance = new Map(mapRef.current, {
-            center,
-            zoom,
-            mapTypeControl: true,
-            fullscreenControl: true,
-            streetViewControl: false,
-            zoomControl: true,
-          });
 
-          // Add click listener for adding activities
-          mapInstance.addListener('click', (e: google.maps.MapMouseEvent) => {
-            if (e.latLng) {
-              setClickedCoords({
-                lat: e.latLng.lat(),
-                lng: e.latLng.lng(),
-              });
-              setShowAddForm(true);
-              setSelectedActivity(null);
-            }
-          });
+        const mapInstance = new Map(mapRef.current, {
+          center,
+          zoom,
+          mapTypeControl: true,
+          fullscreenControl: true,
+          streetViewControl: false,
+          zoomControl: true,
+        });
 
-          if (!cancelled) {
-            setMap(mapInstance);
-            setLoading(false);
+        // Add click listener for adding activities
+        mapInstance.addListener('click', (e: google.maps.MapMouseEvent) => {
+          if (e.latLng) {
+            setClickedCoords({
+              lat: e.latLng.lat(),
+              lng: e.latLng.lng(),
+            });
+            setShowAddForm(true);
+            setSelectedActivity(null);
           }
+        });
 
-          // Load places, geometry, marker in background (for autocomplete, polylines, etc.)
-          Promise.all([
-            importLibrary('places'),
-            importLibrary('geometry'),
-            importLibrary('marker'),
-          ]).catch((e) => console.warn('Background map libraries failed to load:', e));
+        if (!cancelled) {
+          setMap(mapInstance);
+          setLoading(false);
         }
+
+        // Load places, geometry, marker in background (for autocomplete, polylines, etc.)
+        Promise.all([
+          importLibrary('places'),
+          importLibrary('geometry'),
+          importLibrary('marker'),
+        ]).catch((e) => console.warn('Background map libraries failed to load:', e));
       } catch (err: any) {
         console.error('Error loading Google Maps:', err);
 
