@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity } from '@/types';
+import { Activity, CampingSpot } from '@/types';
 import { useTrip } from '@/lib/store';
 
 interface MarkerInfoWindowProps {
@@ -64,46 +64,44 @@ export default function MarkerInfoWindow({ activity, onClose }: MarkerInfoWindow
           </div>
         )}
 
-        {activity.type === 'camping' && 'amenities' in activity && activity.amenities && (
-          <div className="text-sm">
-            <span className="text-gray-600">Amenities:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {(activity.amenities as any).free && (
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                  Free
-                </span>
+        {activity.type === 'camping' && (() => {
+          const camping = activity as CampingSpot;
+          return (
+            <>
+              {camping.amenities && (
+                <div className="text-sm">
+                  <span className="text-gray-600">Amenities:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {camping.amenities.free && (
+                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Free</span>
+                    )}
+                    {camping.amenities.fireRing && (
+                      <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">Fire Ring</span>
+                    )}
+                    {camping.amenities.cellCoverage && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Cell Coverage</span>
+                    )}
+                    {camping.amenities.water && (
+                      <span className="px-2 py-1 bg-cyan-100 text-cyan-700 rounded text-xs">Water</span>
+                    )}
+                  </div>
+                </div>
               )}
-              {(activity.amenities as any).fireRing && (
-                <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
-                  Fire Ring
-                </span>
+              {camping.sourceLink && (
+                <div className="text-sm">
+                  <a
+                    href={camping.sourceLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 underline"
+                  >
+                    View Source
+                  </a>
+                </div>
               )}
-              {(activity.amenities as any).cellCoverage && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                  Cell Coverage
-                </span>
-              )}
-              {(activity.amenities as any).water && (
-                <span className="px-2 py-1 bg-cyan-100 text-cyan-700 rounded text-xs">
-                  Water
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activity.type === 'camping' && 'sourceLink' in activity && activity.sourceLink && typeof activity.sourceLink === 'string' && (
-          <div className="text-sm">
-            <a
-              href={activity.sourceLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 underline"
-            >
-              View Source
-            </a>
-          </div>
-        )}
+            </>
+          );
+        })()}
 
         <div className="text-xs text-gray-500">
           {activity.coordinates.lat.toFixed(4)}, {activity.coordinates.lng.toFixed(4)}
