@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
-import { Trip, Activity } from '@/types';
+import { Trip, Activity, WeatherData } from '@/types';
 import { storage } from './storage';
 
 interface TripContextType {
@@ -11,6 +11,7 @@ interface TripContextType {
   removeActivity: (activityId: string) => void;
   updateActivity: (activityId: string, updates: Partial<Activity>) => void;
   reorderActivities: (dayNumber: number, activities: Activity[]) => void;
+  setDayWeather: (dayNumber: number, weather: WeatherData) => void;
   clearTrip: () => void;
   selectedDay: number | null;
   setSelectedDay: (dayNumber: number | null) => void;
@@ -144,6 +145,18 @@ export function TripProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setDayWeather = useCallback((dayNumber: number, weather: WeatherData) => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        days: prev.days.map(d =>
+          d.dayNumber === dayNumber ? { ...d, weather } : d
+        ),
+      };
+    });
+  }, []);
+
   const clearTrip = useCallback(() => {
     setTripState(null);
     setSelectedDay(null);
@@ -158,6 +171,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         removeActivity,
         updateActivity,
         reorderActivities,
+        setDayWeather,
         clearTrip,
         selectedDay,
         setSelectedDay,
