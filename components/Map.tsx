@@ -88,7 +88,7 @@ export default function TripMap(props: MapProps = {}) {
   // Dashed polylines for driving activity start→end segments
   const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
 
-  const { trip } = useTrip();
+  const { trip, selectedDay } = useTrip();
 
   // Initialize map
   useEffect(() => {
@@ -243,6 +243,22 @@ export default function TripMap(props: MapProps = {}) {
       drivingPolylinesRef.current.push(polyline);
     });
   }, [map, trip]);
+
+  // Fit map to selected day's activities when selectedDay changes
+  useEffect(() => {
+    if (!map || !trip || !selectedDay) return;
+    const day = trip.days.find(d => d.dayNumber === selectedDay);
+    if (!day || day.activities.length === 0) return;
+
+    if (day.activities.length === 1) {
+      map.panTo(day.activities[0].coordinates);
+      map.setZoom(12);
+    } else {
+      const bounds = new google.maps.LatLngBounds();
+      day.activities.forEach(a => bounds.extend(a.coordinates));
+      map.fitBounds(bounds, 80);
+    }
+  }, [selectedDay, map, trip]);
 
   return (
     <>
