@@ -30,6 +30,353 @@ Verification commands:
 
 ---
 
+## PHASE 0: Activity Form Foundations
+
+---
+
+### Task P0-TA: Google Places Autocomplete for Activity Name/Location Fields
+
+**Priority:** P0 | **Estimate:** 1.5 hrs | **Assignable to:** Subagent
+
+**Files:**
+- Create: `components/PlacesAutocomplete.tsx`
+- Modify: `components/AddActivityForm.tsx`
+
+**What it does:** Replaces the plain text name input in `AddActivityForm` with a Google Places Autocomplete input. When the user types a place name they get a live dropdown of suggestions. Selecting one auto-fills the name AND resolves the coordinates — no map click or manual geocoding required. The existing manual coordinate paste field remains as a fallback.
+
+**Context:** The Google Maps JS API is already loaded in `Map.tsx` with `libraries=places,geometry,marker` — so `google.maps.places.Autocomplete` and `google.maps.places.PlacesService` are available without any additional loading. The component must wait for the `google` global to be present before initialising (it's loaded asynchronously by Map.tsx). Use `window.google?.maps?.places` existence check.
+
+**Step 1: Create components/PlacesAutocomplete.tsx**
+
+This is a controlled input that attaches `google.maps.places.Autocomplete` to a ref on mount.
+
+```tsx
+'use client';
+
+import { useEffect, useRef } from 'react';
+
+interface PlaceResult {
+  name: string;
+  coordinates: { lat: number; lng: number };
+}
+
+interface PlacesAutocompleteProps {
+  value: string;
+  onChange: (value: string) => void;
+  onPlaceSelected: (result: PlaceResult) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export default function PlacesAutocomplete({
+  value,
+  onChange,
+  onPlaceSelected,
+  placeholder = 'Search for a place...',
+  className = '',
+}: PlacesAutocompleteProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  useEffect(() => {
+    // Wait for Google Maps to be loaded (it loads asynchronously via Map.tsx)
+    if (!inputRef.current) return;
+    if (!window.google?.maps?.places) return;
+
+    autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+      fields: ['name', 'geometry', 'formatted_address'],
+    });
+
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current?.getPlace();
+      if (!place?.geometry?.location) return;
+
+      const name = place.name || place.formatted_address || '';
+      const coordinates = {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      };
+
+      onChange(name);
+      onPlaceSelected({ name, coordinates });
+    });
+
+    return () => {
+      if (autocompleteRef.current) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+    };
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={className}
+      autoComplete="off"
+    />
+  );
+}
+```
+
+**Step 2: Update AddActivityForm.tsx**
+
+- Import `PlacesAutocomplete`
+- Replace the plain `<input type="text">` name field with `<PlacesAutocomplete>`
+- In `onPlaceSelected`, call `setParsedCoords(result.coordinates)` and `setName(result.name)`
+- Keep the existing "Coordinates (optional)" paste field and "Using: lat, lng" display — they remain as fallback / override
+- Add a small hint below the name field: `📍 Select from dropdown to auto-fill location`
+
+The `onPlaceSelected` handler:
+```tsx
+const handlePlaceSelected = (result: { name: string; coordinates: { lat: number; lng: number } }) => {
+  setName(result.name);
+  setParsedCoords(result.coordinates);
+};
+```
+
+Replace name input JSX:
+```tsx
+<PlacesAutocomplete
+  value={name}
+  onChange={setName}
+  onPlaceSelected={handlePlaceSelected}
+  placeholder="e.g., Angels Landing Trail"
+  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+/>
+<p className="text-xs text-gray-400 mt-1">📍 Select from dropdown to auto-fill location</p>
+```
+
+**Step 3: Type check**
+
+```bash
+npx tsc --noEmit
+```
+Expected: no errors.
+
+**Step 4: Visual verify**
+
+- Open dev server, create a trip, open the Add Activity form
+- Type "Arches National" in the name field → see Google Places dropdown appear
+- Select a suggestion → name field fills, "Using: lat, lng" updates to the park's coordinates
+- Submit → pin appears on map at the correct location
+
+**Step 5: Commit**
+
+```bash
+git add components/PlacesAutocomplete.tsx components/AddActivityForm.tsx
+git commit -m "feat: add Google Places Autocomplete to activity name field"
+```
+
+---
+
+### Task P0-TB: Driving Activity Type with Start + Finish Locations
+
+**Priority:** P0 | **Estimate:** 1.5 hrs | **Assignable to:** Subagent
+**Depends on:** P0-TA (uses PlacesAutocomplete component)
+
+**Files:**
+- Modify: `types/index.ts`
+- Modify: `components/AddActivityForm.tsx`
+- Modify: `components/DayCard.tsx`
+- Modify: `components/MarkerInfoWindow.tsx`
+- Modify: `components/Map.tsx`
+
+**What it does:** Adds a `'driving'` activity type. When selected, the form hides the standard single-name input and shows two `PlacesAutocomplete` fields: Start Location and End Location. The activity name auto-generates as `"Drive: [Start] → [End]"`. The map renders a dashed polyline between start and end coordinates for driving legs.
+
+**Step 1: Update types/index.ts**
+
+Change the `ActivityType` union:
+```typescript
+export type ActivityType = 'trail' | 'hotel' | 'restaurant' | 'camping' | 'park' | 'driving';
+```
+
+Add the `DrivingActivity` interface after the `Park` interface:
+```typescript
+export interface DrivingActivity extends Activity {
+  type: 'driving';
+  startLocation: {
+    name: string;
+    coordinates: Coordinates;
+  };
+  endLocation: {
+    name: string;
+    coordinates: Coordinates;
+  };
+  estimatedDriveHours?: number;
+}
+```
+
+**Step 2: Update AddActivityForm.tsx**
+
+Add driving-specific state:
+```tsx
+const [driveStart, setDriveStart] = useState<{ name: string; coordinates: Coordinates } | null>(null);
+const [driveEnd, setDriveEnd] = useState<{ name: string; coordinates: Coordinates } | null>(null);
+const [driveStartInput, setDriveStartInput] = useState('');
+const [driveEndInput, setDriveEndInput] = useState('');
+```
+
+When `type === 'driving'`, replace the name field + coordinate section with:
+```tsx
+{type === 'driving' ? (
+  <div className="space-y-3">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Start Location</label>
+      <PlacesAutocomplete
+        value={driveStartInput}
+        onChange={setDriveStartInput}
+        onPlaceSelected={result => {
+          setDriveStart(result);
+          setDriveStartInput(result.name);
+        }}
+        placeholder="e.g., Moab, UT"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {driveStart && <p className="text-xs text-green-600 mt-1">✓ {driveStart.coordinates.lat.toFixed(4)}, {driveStart.coordinates.lng.toFixed(4)}</p>}
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">End Location</label>
+      <PlacesAutocomplete
+        value={driveEndInput}
+        onChange={setDriveEndInput}
+        onPlaceSelected={result => {
+          setDriveEnd(result);
+          setDriveEndInput(result.name);
+        }}
+        placeholder="e.g., Capitol Reef National Park"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {driveEnd && <p className="text-xs text-green-600 mt-1">✓ {driveEnd.coordinates.lat.toFixed(4)}, {driveEnd.coordinates.lng.toFixed(4)}</p>}
+    </div>
+    {driveStart && driveEnd && (
+      <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded">
+        🚗 Drive: {driveStartInput} → {driveEndInput}
+      </p>
+    )}
+  </div>
+) : (
+  /* existing name field + coordinate section */
+)}
+```
+
+In `handleSubmit`, when `type === 'driving'`:
+- Validate that both `driveStart` and `driveEnd` are set
+- Set `name` to `"Drive: ${driveStart.name} → ${driveEnd.name}"`
+- Set `coordinates` to `driveStart.coordinates` (start of the drive)
+- Create a `DrivingActivity` with `startLocation` and `endLocation`
+
+```tsx
+if (type === 'driving') {
+  if (!driveStart || !driveEnd) {
+    alert('Please select both start and end locations');
+    return;
+  }
+  const driveName = `Drive: ${driveStart.name} → ${driveEnd.name}`;
+  activity = {
+    id: crypto.randomUUID(),
+    type: 'driving',
+    name: driveName,
+    coordinates: driveStart.coordinates,
+    dayNumber: currentDayNumber,
+    isDogFriendly: true,
+    notes: notes.trim() || undefined,
+    startLocation: driveStart,
+    endLocation: driveEnd,
+  } as DrivingActivity;
+}
+```
+
+Add `DrivingActivity` to the import from `@/types`.
+
+**Step 3: Update DayCard.tsx**
+
+Add `driving: '🚗'` to `activityIcons` and `driving: 'text-gray-600'` to `activityColors`.
+
+**Step 4: Update MarkerInfoWindow.tsx**
+
+Add `driving: '🚗'` to `activityIcons`. For driving activities, show start → end in the info window:
+
+```tsx
+{activity.type === 'driving' && (() => {
+  const driving = activity as DrivingActivity;
+  return (
+    <div className="text-sm">
+      <p className="text-gray-600">Route:</p>
+      <p className="text-gray-900">{driving.startLocation.name}</p>
+      <p className="text-gray-500 text-xs">↓</p>
+      <p className="text-gray-900">{driving.endLocation.name}</p>
+    </div>
+  );
+})()}
+```
+
+Import `DrivingActivity` from `@/types`.
+
+**Step 5: Update Map.tsx**
+
+After the existing day route polylines effect, add an additional effect to draw dashed driving segments:
+
+```tsx
+// Driving route segments (dashed) - separate from day polylines
+const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
+
+useEffect(() => {
+  if (!map || !trip) return;
+
+  drivingPolylinesRef.current.forEach(p => p.setMap(null));
+  drivingPolylinesRef.current = [];
+
+  const allActivities = trip.days.flatMap(d => d.activities);
+  const drivingActivities = allActivities.filter(a => a.type === 'driving') as DrivingActivity[];
+
+  drivingActivities.forEach(drive => {
+    const polyline = new google.maps.Polyline({
+      path: [drive.startLocation.coordinates, drive.endLocation.coordinates],
+      geodesic: true,
+      strokeColor: '#6b7280',
+      strokeOpacity: 0,
+      strokeWeight: 0,
+      icons: [{
+        icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+        offset: '0',
+        repeat: '20px',
+      }],
+      map,
+    });
+    drivingPolylinesRef.current.push(polyline);
+  });
+}, [map, trip]);
+```
+
+Import `DrivingActivity` from `@/types`.
+
+**Step 6: Type check + build**
+
+```bash
+npx tsc --noEmit && npm run build
+```
+
+**Step 7: Visual verify**
+
+- Open Add Activity form, select "Driving" type
+- See two PlacesAutocomplete fields: Start and End
+- Type and select locations → green coordinate confirmations appear
+- Submit → 🚗 pin on map at start location, dashed grey line to end location
+- DayCard shows 🚗 icon, click pin shows start → end route info
+
+**Step 8: Commit**
+
+```bash
+git add types/index.ts components/AddActivityForm.tsx components/DayCard.tsx components/MarkerInfoWindow.tsx components/Map.tsx
+git commit -m "feat: add driving activity type with start/end PlacesAutocomplete and dashed map route"
+```
+
+---
+
 ## PHASE 1: Core UX Gaps
 
 ---

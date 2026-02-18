@@ -6,7 +6,7 @@
       "role": "Lead Developer / PM",
       "model": "claude-sonnet-4-6",
       "status": "active",
-      "currentTask": "Plan written, backlog created — awaiting execution start",
+      "currentTask": "Dispatching subagent: P0-TA Google Places Autocomplete",
       "lastActive": "2026-02-18"
     }
   ],
@@ -48,6 +48,27 @@
     }
   ],
   "tasks": [
+    {
+      "id": "P0-TA",
+      "subject": "Google Places Autocomplete for activity name/location fields",
+      "phase": "Phase 0 - Activity Form Foundations",
+      "priority": "P0",
+      "status": "in_progress",
+      "assigned": "subagent-1",
+      "files": ["components/PlacesAutocomplete.tsx", "components/AddActivityForm.tsx"],
+      "estimate": "1.5 hrs"
+    },
+    {
+      "id": "P0-TB",
+      "subject": "Driving activity type with start + finish locations",
+      "phase": "Phase 0 - Activity Form Foundations",
+      "priority": "P0",
+      "status": "pending",
+      "assigned": null,
+      "files": ["types/index.ts", "components/AddActivityForm.tsx", "components/DayCard.tsx", "components/MarkerInfoWindow.tsx", "components/Map.tsx"],
+      "estimate": "1.5 hrs",
+      "blockedBy": ["P0-TA"]
+    },
     {
       "id": "P1-T1",
       "subject": "Dog/No-Dog day badge on DayCard",
@@ -208,17 +229,18 @@
   ],
   "metrics": {
     "activeAgents": 1,
-    "pendingTasks": 10,
+    "pendingTasks": 11,
     "completedTasks": 6,
     "overallProgress": 37,
     "currentPhase": "Phase 1: Core UX Gaps (P0) — Ready to execute",
     "phases": {
       "foundation": { "name": "Foundation", "total": 6, "done": 6, "pct": 100 },
+      "phase0_forms": { "name": "Phase 0 — Activity Form Foundations", "total": 2, "done": 0, "pct": 0 },
       "phase1_ux": { "name": "Phase 1 — Core UX", "total": 3, "done": 0, "pct": 0 },
       "phase2_import": { "name": "Phase 2 — Smart Import", "total": 4, "done": 0, "pct": 0 },
       "phase3_intelligence": { "name": "Phase 3 — Intelligence", "total": 3, "done": 0, "pct": 0 }
     },
-    "nextUnblockedTasks": ["P1-T1", "P2-T4", "P3-T8", "P3-T10"],
+    "nextUnblockedTasks": ["P0-TA", "P0-TB (after P0-TA)"],
     "planFile": "docs/plans/2026-02-18-option-c-hybrid.md",
     "backlogFile": "docs/BACKLOG.md"
   }

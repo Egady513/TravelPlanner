@@ -14,6 +14,24 @@
 
 ---
 
+## Phase 0: Activity Form Foundations (P0) — Do Before Everything Else
+
+| ID | Task | Status | Assigned | Notes |
+|----|------|--------|----------|-------|
+| P0-TA | Google Places Autocomplete for name/location fields | 🔲 pending | — | Create `components/PlacesAutocomplete.tsx`, modify `AddActivityForm.tsx` |
+| P0-TB | Driving activity type (start + finish locations) | 🔲 pending | — | Modify `types/index.ts`, `AddActivityForm.tsx`, `DayCard.tsx`, `Map.tsx` — depends on P0-TA |
+
+**Definition of done (Phase 0):**
+- [ ] Typing a place name in AddActivityForm shows a live Google Places dropdown
+- [ ] Selecting a suggestion auto-fills name AND resolves coordinates (no map click required)
+- [ ] "Driving" is a selectable activity type
+- [ ] Driving form shows two Places Autocomplete inputs: Start Location and End Location
+- [ ] Activity name auto-generates as "Drive: [Start] → [End]"
+- [ ] Map shows dashed polyline between start and end for driving activities
+- [ ] DayCard shows 🚗 icon for driving activities
+
+---
+
 ## Phase 1: Core UX Gaps (P0) — Do First
 
 | ID | Task | Status | Assigned | Notes |
