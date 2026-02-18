@@ -1,0 +1,225 @@
+{
+  "agents": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "role": "Lead Developer / PM",
+      "model": "claude-sonnet-4-6",
+      "status": "active",
+      "currentTask": "Plan written, backlog created — awaiting execution start",
+      "lastActive": "2026-02-18"
+    }
+  ],
+  "logs": [
+    {
+      "time": "2026-02-18",
+      "agent": "claude-code",
+      "message": "PM review complete. PRD gap analysis done. Option C (Hybrid Smart Import + Enhanced Day View) approved."
+    },
+    {
+      "time": "2026-02-18",
+      "agent": "claude-code",
+      "message": "Implementation plan written: docs/plans/2026-02-18-option-c-hybrid.md (10 tasks, 3 phases)"
+    },
+    {
+      "time": "2026-02-18",
+      "agent": "claude-code",
+      "message": "Backlog created: docs/BACKLOG.md with P0/P1/P2 tasks, dependency map, and definition of done"
+    },
+    {
+      "time": "session-2",
+      "agent": "claude-code",
+      "message": "ROOT CAUSE FOUND & FIXED: Map.tsx deadlock - mapRef null during initMap(). Map now loads correctly."
+    },
+    {
+      "time": "session-2",
+      "agent": "claude-code",
+      "message": "Supabase backend integrated: trips table, async storage, debounced saves"
+    },
+    {
+      "time": "session-2",
+      "agent": "agent-weather",
+      "message": "DONE: lib/weather.ts + app/api/weather/route.ts — Weather.gov (NOAA) integration complete"
+    },
+    {
+      "time": "session-2",
+      "agent": "agent-validation",
+      "message": "DONE: lib/validation.ts — lodging validation engine complete (all 4 PRD rules)"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "P1-T1",
+      "subject": "Dog/No-Dog day badge on DayCard",
+      "phase": "Phase 1 - Core UX",
+      "priority": "P0",
+      "status": "pending",
+      "assigned": null,
+      "files": ["components/DayCard.tsx"],
+      "estimate": "30 min"
+    },
+    {
+      "id": "P1-T2",
+      "subject": "Day Detail Panel (expandable from DayCard click)",
+      "phase": "Phase 1 - Core UX",
+      "priority": "P0",
+      "status": "pending",
+      "assigned": null,
+      "files": ["components/DayDetailPanel.tsx", "components/Sidebar.tsx"],
+      "estimate": "2 hrs",
+      "blockedBy": []
+    },
+    {
+      "id": "P1-T3",
+      "subject": "Add Activity from Day Panel + Geocoding utility",
+      "phase": "Phase 1 - Core UX",
+      "priority": "P0",
+      "status": "pending",
+      "assigned": null,
+      "files": ["lib/geocoding.ts", "components/AddActivityForm.tsx"],
+      "estimate": "1.5 hrs",
+      "blockedBy": ["P1-T2"]
+    },
+    {
+      "id": "P2-T4",
+      "subject": "Install @anthropic-ai/sdk + configure ANTHROPIC_API_KEY",
+      "phase": "Phase 2 - Smart Import",
+      "priority": "P1",
+      "status": "pending",
+      "assigned": null,
+      "files": ["package.json", ".env.local"],
+      "estimate": "5 min",
+      "blockedBy": []
+    },
+    {
+      "id": "P2-T5",
+      "subject": "AI Import API route (/api/import) using Claude Haiku",
+      "phase": "Phase 2 - Smart Import",
+      "priority": "P1",
+      "status": "pending",
+      "assigned": null,
+      "files": ["app/api/import/route.ts"],
+      "estimate": "1.5 hrs",
+      "blockedBy": ["P2-T4"]
+    },
+    {
+      "id": "P2-T6",
+      "subject": "Import modal UI (ImportItinerary.tsx) with preview + geocode",
+      "phase": "Phase 2 - Smart Import",
+      "priority": "P1",
+      "status": "pending",
+      "assigned": null,
+      "files": ["components/ImportItinerary.tsx"],
+      "estimate": "2 hrs",
+      "blockedBy": ["P2-T5", "P1-T3"]
+    },
+    {
+      "id": "P2-T7",
+      "subject": "Homepage Import Existing Plan CTA",
+      "phase": "Phase 2 - Smart Import",
+      "priority": "P1",
+      "status": "pending",
+      "assigned": null,
+      "files": ["components/Homepage.tsx", "app/page.tsx"],
+      "estimate": "30 min",
+      "blockedBy": ["P2-T6"]
+    },
+    {
+      "id": "P3-T8",
+      "subject": "Weather badges on DayCard (wire existing weather engine)",
+      "phase": "Phase 3 - Intelligence",
+      "priority": "P2",
+      "status": "pending",
+      "assigned": null,
+      "files": ["lib/store.tsx", "components/DayCard.tsx"],
+      "estimate": "1.5 hrs",
+      "blockedBy": []
+    },
+    {
+      "id": "P3-T9",
+      "subject": "Validation UI in DayCard + DayDetailPanel (wire existing validation engine)",
+      "phase": "Phase 3 - Intelligence",
+      "priority": "P2",
+      "status": "pending",
+      "assigned": null,
+      "files": ["lib/store.tsx", "components/DayCard.tsx"],
+      "estimate": "1 hr",
+      "blockedBy": ["P1-T2"]
+    },
+    {
+      "id": "P3-T10",
+      "subject": "Map auto-fits to selected day's activities on day select",
+      "phase": "Phase 3 - Intelligence",
+      "priority": "P2",
+      "status": "pending",
+      "assigned": null,
+      "files": ["components/Map.tsx"],
+      "estimate": "45 min",
+      "blockedBy": []
+    },
+    {
+      "id": "OLD-1",
+      "subject": "Fix map loading deadlock (mapRef null)",
+      "phase": "Foundation",
+      "priority": "P0",
+      "status": "completed",
+      "assigned": "claude-code"
+    },
+    {
+      "id": "OLD-2",
+      "subject": "Build Weather.gov API utility (lib/weather.ts)",
+      "phase": "Foundation",
+      "priority": "P1",
+      "status": "completed",
+      "assigned": "agent-weather"
+    },
+    {
+      "id": "OLD-3",
+      "subject": "Build lodging validation engine (lib/validation.ts)",
+      "phase": "Foundation",
+      "priority": "P1",
+      "status": "completed",
+      "assigned": "agent-validation"
+    },
+    {
+      "id": "OLD-4",
+      "subject": "Add Supabase backend for persistent trip storage",
+      "phase": "Foundation",
+      "priority": "P1",
+      "status": "completed",
+      "assigned": "claude-code"
+    },
+    {
+      "id": "OLD-5",
+      "subject": "Fix Google Maps: bypass broken js-api-loader v2",
+      "phase": "Foundation",
+      "priority": "P0",
+      "status": "completed",
+      "assigned": "claude-code"
+    },
+    {
+      "id": "OLD-6",
+      "subject": "6-step wizard redesign with homepage and My Trips page",
+      "phase": "Foundation",
+      "priority": "P1",
+      "status": "completed",
+      "assigned": "claude-code"
+    }
+  ],
+  "metrics": {
+    "activeAgents": 1,
+    "pendingTasks": 10,
+    "completedTasks": 6,
+    "overallProgress": 37,
+    "currentPhase": "Phase 1: Core UX Gaps (P0) — Ready to execute",
+    "phases": {
+      "foundation": { "name": "Foundation", "total": 6, "done": 6, "pct": 100 },
+      "phase1_ux": { "name": "Phase 1 — Core UX", "total": 3, "done": 0, "pct": 0 },
+      "phase2_import": { "name": "Phase 2 — Smart Import", "total": 4, "done": 0, "pct": 0 },
+      "phase3_intelligence": { "name": "Phase 3 — Intelligence", "total": 3, "done": 0, "pct": 0 }
+    },
+    "nextUnblockedTasks": ["P1-T1", "P2-T4", "P3-T8", "P3-T10"],
+    "planFile": "docs/plans/2026-02-18-option-c-hybrid.md",
+    "backlogFile": "docs/BACKLOG.md"
+  }
+}
