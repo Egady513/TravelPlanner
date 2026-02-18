@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, CampingSpot } from '@/types';
+import { Activity, CampingSpot, DrivingActivity } from '@/types';
 import { useTrip } from '@/lib/store';
 
 interface MarkerInfoWindowProps {
@@ -14,6 +14,7 @@ const activityIcons: Record<string, string> = {
   restaurant: '🍽️',
   camping: '⛺',
   park: '🏞️',
+  driving: '🚗',
 };
 
 export default function MarkerInfoWindow({ activity, onClose }: MarkerInfoWindowProps) {
@@ -56,6 +57,20 @@ export default function MarkerInfoWindow({ activity, onClose }: MarkerInfoWindow
             🐕 Dog-friendly
           </div>
         )}
+
+        {activity.type === 'driving' && (() => {
+          const driving = activity as DrivingActivity;
+          return (
+            <div className="text-sm">
+              <span className="text-gray-600">Route:</span>
+              <div className="mt-1 space-y-0.5">
+                <p className="text-gray-900">📍 {driving.startLocation.name}</p>
+                <p className="text-gray-400 text-xs pl-2">↓ drive</p>
+                <p className="text-gray-900">📍 {driving.endLocation.name}</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {activity.notes && (
           <div className="text-sm">

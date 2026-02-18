@@ -1,6 +1,6 @@
 'use client';
 
-import { Day, Activity } from '@/types';
+import { Day } from '@/types';
 import { useTrip } from '@/lib/store';
 
 interface DayCardProps {
@@ -14,6 +14,7 @@ const activityIcons: Record<string, string> = {
   restaurant: '🍽️',
   camping: '⛺',
   park: '🏞️',
+  driving: '🚗',
 };
 
 const activityColors: Record<string, string> = {
@@ -22,10 +23,11 @@ const activityColors: Record<string, string> = {
   restaurant: 'text-orange-600',
   camping: 'text-amber-700',
   park: 'text-emerald-700',
+  driving: 'text-gray-600',
 };
 
 export default function DayCard({ day, isSelected }: DayCardProps) {
-  const { selectedDay, setSelectedDay, removeActivity } = useTrip();
+  const { setSelectedDay, removeActivity } = useTrip();
 
   const formatDate = (date?: Date) => {
     if (!date) return '';

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTrip } from '@/lib/store';
-import { Activity, Coordinates, ActivityType } from '@/types';
+import { Activity, Coordinates, ActivityType, DrivingActivity } from '@/types';
 import AddActivityForm from './AddActivityForm';
 import MarkerInfoWindow from './MarkerInfoWindow';
 
@@ -20,6 +20,7 @@ const markerColors: Record<ActivityType, string> = {
   restaurant: '#f97316', // orange
   camping: '#92400e', // brown
   park: '#059669', // dark green
+  driving: '#6b7280', // gray
 };
 
 // Default map center (USA center)
@@ -39,8 +40,8 @@ function loadGoogleMaps(apiKey: string): Promise<typeof google.maps> {
     }
 
     const callbackName = '__initGoogleMaps_' + Date.now();
-    (window as any)[callbackName] = () => {
-      delete (window as any)[callbackName];
+    (window as unknown as Record<string, unknown>)[callbackName] = () => {
+      delete (window as unknown as Record<string, unknown>)[callbackName];
       resolve(window.google.maps);
     };
 
@@ -50,7 +51,7 @@ function loadGoogleMaps(apiKey: string): Promise<typeof google.maps> {
     script.defer = true;
     script.onerror = () => {
       googleMapsPromise = null;
-      delete (window as any)[callbackName];
+      delete (window as unknown as Record<string, unknown>)[callbackName];
       reject(new Error('Google Maps script failed to load. Check your API key and internet connection.'));
     };
     document.head.appendChild(script);
@@ -83,6 +84,9 @@ export default function TripMap(props: MapProps = {}) {
 
   // Polylines for routes
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
+
+  // Dashed polylines for driving activity start→end segments
+  const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
 
   const { trip } = useTrip();
 
@@ -128,10 +132,10 @@ export default function TripMap(props: MapProps = {}) {
           setMap(mapInstance);
           setLoading(false);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error loading Google Maps:', err);
         if (!cancelled) {
-          setError(err?.message || 'Failed to load Google Maps. Check your API key and internet connection.');
+          setError((err as Error)?.message || 'Failed to load Google Maps. Check your API key and internet connection.');
           setLoading(false);
         }
       }
@@ -208,43 +212,72 @@ export default function TripMap(props: MapProps = {}) {
     });
   }, [map, trip]);
 
-  if (error) {
-    return (
-      <div className={`${className} flex items-center justify-center bg-gray-100 rounded-lg`}>
-        <div className="text-center p-8 max-w-md">
-          <p className="text-red-600 font-semibold mb-2">Map Error</p>
-          <p className="text-sm text-gray-600 mb-4">{error}</p>
-          <button
-            type="button"
-            onClick={() => {
-              googleMapsPromise = null; // allow re-attempt
-              setError(null);
-              setLoading(true);
-              setRetryKey(k => k + 1);
-            }}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Dashed polylines for driving activity start→end
+  useEffect(() => {
+    if (!map || !trip) return;
 
-  if (loading) {
-    return (
-      <div className={`${className} flex items-center justify-center bg-gray-100 rounded-lg min-h-[200px]`}>
-        <div className="text-center px-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading map...</p>
-        </div>
-      </div>
-    );
-  }
+    drivingPolylinesRef.current.forEach(p => p.setMap(null));
+    drivingPolylinesRef.current = [];
+
+    const allActivities = trip.days.flatMap(d => d.activities);
+    const drivingActivities = allActivities.filter(a => a.type === 'driving') as DrivingActivity[];
+
+    drivingActivities.forEach(drive => {
+      const polyline = new google.maps.Polyline({
+        path: [drive.startLocation.coordinates, drive.endLocation.coordinates],
+        geodesic: true,
+        strokeColor: '#6b7280',
+        strokeOpacity: 0,
+        strokeWeight: 0,
+        icons: [{
+          icon: {
+            path: 'M 0,-1 0,1',
+            strokeOpacity: 1,
+            scale: 3,
+          },
+          offset: '0',
+          repeat: '20px',
+        }],
+        map,
+      });
+      drivingPolylinesRef.current.push(polyline);
+    });
+  }, [map, trip]);
 
   return (
     <>
-      <div ref={mapRef} className={className} />
+      {/* Map container: always in DOM so mapRef is available during async init */}
+      <div ref={mapRef} className={className} style={{ visibility: (loading || error) ? 'hidden' : 'visible' }} />
+
+      {error && (
+        <div className={`${className} absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg`}>
+          <div className="text-center p-8 max-w-md">
+            <p className="text-red-600 font-semibold mb-2">Map Error</p>
+            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <button
+              type="button"
+              onClick={() => {
+                googleMapsPromise = null; // allow re-attempt
+                setError(null);
+                setLoading(true);
+                setRetryKey(k => k + 1);
+              }}
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading && !error && (
+        <div className={`${className} absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg min-h-[200px]`}>
+          <div className="text-center px-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading map...</p>
+          </div>
+        </div>
+      )}
 
       {/* Add Activity Form Overlay */}
       {showAddForm && clickedCoords && typeof window !== 'undefined' &&

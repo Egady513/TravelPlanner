@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTrip } from '@/lib/store';
-import { ActivityType, Coordinates, Activity, CampingSpot } from '@/types';
+import { ActivityType, Coordinates, Activity, CampingSpot, DrivingActivity } from '@/types';
 import PlacesAutocomplete from './PlacesAutocomplete';
 
 interface AddActivityFormProps {
@@ -11,13 +11,19 @@ interface AddActivityFormProps {
 }
 
 export default function AddActivityForm({ coordinates, onClose }: AddActivityFormProps) {
-  const { trip, addActivity, selectedDay } = useTrip();
+  const { addActivity, selectedDay } = useTrip();
   const [name, setName] = useState('');
   const [type, setType] = useState<ActivityType>('trail');
   const [isDogFriendly, setIsDogFriendly] = useState(true);
   const [notes, setNotes] = useState('');
   const [coordinateInput, setCoordinateInput] = useState('');
   const [parsedCoords, setParsedCoords] = useState<Coordinates>(coordinates);
+
+  // Driving-specific fields
+  const [driveStartInput, setDriveStartInput] = useState('');
+  const [driveEndInput, setDriveEndInput] = useState('');
+  const [driveStart, setDriveStart] = useState<{ name: string; coordinates: Coordinates } | null>(null);
+  const [driveEnd, setDriveEnd] = useState<{ name: string; coordinates: Coordinates } | null>(null);
 
   // Camping-specific fields
   const [sourceLink, setSourceLink] = useState('');
@@ -62,8 +68,31 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
+    // Skip name validation for driving type (name is auto-generated)
+    if (type !== 'driving' && !name.trim()) {
       alert('Please enter an activity name');
+      return;
+    }
+
+    if (type === 'driving') {
+      if (!driveStart || !driveEnd) {
+        alert('Please select both start and end locations');
+        return;
+      }
+      const driveName = `Drive: ${driveStart.name} → ${driveEnd.name}`;
+      const activity: Activity = {
+        id: crypto.randomUUID(),
+        type: 'driving',
+        name: driveName,
+        coordinates: driveStart.coordinates,
+        dayNumber: currentDayNumber,
+        isDogFriendly: true,
+        notes: notes.trim() || undefined,
+        startLocation: driveStart,
+        endLocation: driveEnd,
+      } as DrivingActivity;
+      addActivity(activity);
+      onClose();
       return;
     }
 
@@ -123,45 +152,88 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
             <option value="restaurant">🍽️ Restaurant</option>
             <option value="camping">⛺ Camping</option>
             <option value="park">🏞️ Park</option>
+            <option value="driving">🚗 Driving</option>
           </select>
         </div>
 
         {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Name
-          </label>
-          <PlacesAutocomplete
-            value={name}
-            onChange={setName}
-            onPlaceSelected={handlePlaceSelected}
-            placeholder="e.g., Angels Landing Trail"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">📍 Select from dropdown to auto-fill location</p>
-        </div>
+        {type !== 'driving' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <PlacesAutocomplete
+              value={name}
+              onChange={setName}
+              onPlaceSelected={handlePlaceSelected}
+              placeholder="e.g., Angels Landing Trail"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">📍 Select from dropdown to auto-fill location</p>
+          </div>
+        )}
+
+        {type === 'driving' && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Location</label>
+              <PlacesAutocomplete
+                value={driveStartInput}
+                onChange={setDriveStartInput}
+                onPlaceSelected={result => {
+                  setDriveStart(result);
+                  setDriveStartInput(result.name);
+                }}
+                placeholder="e.g., Moab, UT"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {driveStart && <p className="text-xs text-green-600 mt-1">✓ {driveStart.coordinates.lat.toFixed(4)}, {driveStart.coordinates.lng.toFixed(4)}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Location</label>
+              <PlacesAutocomplete
+                value={driveEndInput}
+                onChange={setDriveEndInput}
+                onPlaceSelected={result => {
+                  setDriveEnd(result);
+                  setDriveEndInput(result.name);
+                }}
+                placeholder="e.g., Capitol Reef National Park"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {driveEnd && <p className="text-xs text-green-600 mt-1">✓ {driveEnd.coordinates.lat.toFixed(4)}, {driveEnd.coordinates.lng.toFixed(4)}</p>}
+            </div>
+            {driveStart && driveEnd && (
+              <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded">
+                🚗 Drive: {driveStartInput} → {driveEndInput}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Coordinate Paste */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Coordinates (optional)
-          </label>
-          <input
-            type="text"
-            value={coordinateInput}
-            onChange={(e) => setCoordinateInput(e.target.value)}
-            placeholder="38.7234, -109.3421"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Paste from OnX or leave blank to use clicked location
-          </p>
-        </div>
+        {type !== 'driving' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Coordinates (optional)
+            </label>
+            <input
+              type="text"
+              value={coordinateInput}
+              onChange={(e) => setCoordinateInput(e.target.value)}
+              placeholder="38.7234, -109.3421"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Paste from OnX or leave blank to use clicked location
+            </p>
+          </div>
+        )}
 
         {/* Current Coordinates Display */}
-        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          Using: {parsedCoords.lat.toFixed(4)}, {parsedCoords.lng.toFixed(4)}
-        </div>
+        {type !== 'driving' && (
+          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+            Using: {parsedCoords.lat.toFixed(4)}, {parsedCoords.lng.toFixed(4)}
+          </div>
+        )}
 
         {/* Camping-Specific Fields */}
         {type === 'camping' && (

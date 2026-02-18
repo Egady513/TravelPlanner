@@ -1,6 +1,6 @@
 // Core data models for the Road Trip Planner
 
-export type ActivityType = 'trail' | 'hotel' | 'restaurant' | 'camping' | 'park';
+export type ActivityType = 'trail' | 'hotel' | 'restaurant' | 'camping' | 'park' | 'driving';
 
 export type LodgingType = 'hotel' | 'camping';
 
@@ -62,6 +62,19 @@ export interface Park extends Activity {
   type: 'park';
   entranceFee?: number;
   requiresReservation?: boolean;
+}
+
+export interface DrivingActivity extends Activity {
+  type: 'driving';
+  startLocation: {
+    name: string;
+    coordinates: Coordinates;
+  };
+  endLocation: {
+    name: string;
+    coordinates: Coordinates;
+  };
+  estimatedDriveHours?: number;
 }
 
 export interface Day {
