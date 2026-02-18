@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 
 interface HomepageProps {
@@ -57,7 +56,7 @@ export default function Homepage({ onStartPlanning }: HomepageProps) {
 
         {/* Subtext */}
         <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-          Don't overdrive. Don't overcommit. Build road trips that maximize experience per mile
+          Don&apos;t overdrive. Don&apos;t overcommit. Build road trips that maximize experience per mile
           while protecting your energy and time.
         </p>
 

@@ -3,17 +3,17 @@
 import { useState } from 'react';
 
 interface Step2Props {
-  data: any;
-  onUpdate: (data: any) => void;
+  data: Record<string, unknown>;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export default function Step2WhosGoing({ data, onUpdate }: Step2Props) {
   const [formData, setFormData] = useState({
-    peopleCount: data.peopleCount || 2,
-    hasDog: data.hasDog || false,
+    peopleCount: (data.peopleCount as number) || 2,
+    hasDog: (data.hasDog as boolean) || false,
   });
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: number | boolean) => {
     const updated = { ...formData, [field]: value };
     setFormData(updated);
     onUpdate(updated);

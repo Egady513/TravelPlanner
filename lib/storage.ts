@@ -32,34 +32,34 @@ function tripToRow(trip: Trip): Record<string, unknown> {
 }
 
 // Convert Supabase row → app Trip object
-function rowToTrip(row: any): Trip {
+function rowToTrip(row: Record<string, unknown>): Trip {
   return {
-    id: row.id,
-    name: row.name,
-    startDate: new Date(row.start_date),
-    endDate: new Date(row.end_date),
-    isLoopTrip: row.is_loop_trip,
-    peopleCount: row.people_count,
-    hasDog: row.has_dog,
-    tripPace: row.trip_pace,
-    maxDrivingHours: row.max_driving_hours,
-    drivingPreference: row.driving_preference,
-    planningStyle: row.planning_style,
-    budgetStyle: row.budget_style,
-    splurgeNights: row.splurge_nights,
-    isNewCamper: row.is_new_camper,
-    totalDistance: row.total_distance ?? undefined,
-    thumbnailUrl: row.thumbnail_url ?? undefined,
-    startingLocation: row.starting_location ?? undefined,
-    endingLocation: row.ending_location ?? undefined,
-    lodgingPreferences: row.lodging_preferences ?? [],
-    mustHaves: row.must_haves ?? [],
-    days: (row.days ?? []).map((day: any) => ({
+    id: row.id as string,
+    name: row.name as string,
+    startDate: new Date(row.start_date as string),
+    endDate: new Date(row.end_date as string),
+    isLoopTrip: row.is_loop_trip as boolean,
+    peopleCount: row.people_count as number,
+    hasDog: row.has_dog as boolean,
+    tripPace: row.trip_pace as Trip['tripPace'],
+    maxDrivingHours: row.max_driving_hours as number,
+    drivingPreference: row.driving_preference as Trip['drivingPreference'],
+    planningStyle: row.planning_style as Trip['planningStyle'],
+    budgetStyle: row.budget_style as Trip['budgetStyle'],
+    splurgeNights: row.splurge_nights as number,
+    isNewCamper: row.is_new_camper as boolean,
+    totalDistance: (row.total_distance ?? undefined) as number | undefined,
+    thumbnailUrl: (row.thumbnail_url ?? undefined) as string | undefined,
+    startingLocation: (row.starting_location ?? undefined) as Trip['startingLocation'],
+    endingLocation: (row.ending_location ?? undefined) as Trip['endingLocation'],
+    lodgingPreferences: (row.lodging_preferences ?? []) as Trip['lodgingPreferences'],
+    mustHaves: (row.must_haves ?? []) as Trip['mustHaves'],
+    days: ((row.days as Record<string, unknown>[]) ?? []).map((day) => ({
       ...day,
-      date: day.date ? new Date(day.date) : undefined,
-    })),
-    createdAt: row.created_at ? new Date(row.created_at) : undefined,
-    updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+      date: day.date ? new Date(day.date as string) : undefined,
+    })) as unknown as Trip['days'],
+    createdAt: row.created_at ? new Date(row.created_at as string) : undefined,
+    updatedAt: row.updated_at ? new Date(row.updated_at as string) : undefined,
   };
 }
 

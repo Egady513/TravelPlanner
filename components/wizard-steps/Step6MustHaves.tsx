@@ -1,17 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { MustHave } from '@/types';
 
 interface Step6Props {
-  data: any;
-  onUpdate: (data: any) => void;
+  data: Record<string, unknown>;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export default function Step6MustHaves({ data, onUpdate }: Step6Props) {
   const [formData, setFormData] = useState({
-    mustHaves: data.mustHaves || [
-      { id: '1', text: 'Camping by the lake with mountains in the background for an epic photo with my dog', type: 'experience' },
-      { id: '2', text: 'Offroading in my 4runner', type: 'experience' },
+    mustHaves: (data.mustHaves as MustHave[]) || [
+      { id: '1', text: 'Camping by the lake with mountains in the background for an epic photo with my dog', type: 'experience' as const },
+      { id: '2', text: 'Offroading in my 4runner', type: 'experience' as const },
     ],
   });
 
@@ -21,7 +22,7 @@ export default function Step6MustHaves({ data, onUpdate }: Step6Props) {
   const addMustHave = () => {
     if (!newItemText.trim()) return;
 
-    const newItem = {
+    const newItem: MustHave = {
       id: Date.now().toString(),
       text: newItemText.trim(),
       type: selectedType,
@@ -38,7 +39,7 @@ export default function Step6MustHaves({ data, onUpdate }: Step6Props) {
 
   const removeMustHave = (id: string) => {
     const updated = {
-      mustHaves: formData.mustHaves.filter((item: any) => item.id !== id),
+      mustHaves: formData.mustHaves.filter((item) => item.id !== id),
     };
     setFormData(updated);
     onUpdate(updated);
@@ -59,7 +60,7 @@ export default function Step6MustHaves({ data, onUpdate }: Step6Props) {
       {/* Existing Must-Haves */}
       {formData.mustHaves.length > 0 && (
         <div className="space-y-2">
-          {formData.mustHaves.map((item: any) => (
+          {formData.mustHaves.map((item) => (
             <div
               key={item.id}
               className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg group"
@@ -86,11 +87,11 @@ export default function Step6MustHaves({ data, onUpdate }: Step6Props) {
       <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 space-y-4">
         {/* Type selector */}
         <div className="flex gap-2">
-          {['place', 'experience', 'feeling'].map((type) => (
+          {(['place', 'experience', 'feeling'] as const).map((type) => (
             <button
               key={type}
               type="button"
-              onClick={() => setSelectedType(type as any)}
+              onClick={() => setSelectedType(type)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedType === type
                   ? 'bg-orange-500 text-white'

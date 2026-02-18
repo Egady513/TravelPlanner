@@ -24,9 +24,9 @@ export default function TripsPage() {
     loadTrips();
   }, [trip]);
 
-  const handleWizardComplete = (wizardData: any) => {
-    const startDate = parseLocalDate(wizardData.startDate);
-    const endDate = parseLocalDate(wizardData.endDate);
+  const handleWizardComplete = (wizardData: Record<string, unknown>) => {
+    const startDate = parseLocalDate(wizardData.startDate as string);
+    const endDate = parseLocalDate(wizardData.endDate as string);
 
     const days = [];
     const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
@@ -48,22 +48,22 @@ export default function TripsPage() {
 
     const newTrip: Trip = {
       id: crypto.randomUUID(),
-      ...wizardData,
+      name: (wizardData.name as string) || '',
       startDate,
       endDate,
       days,
-      isLoopTrip: wizardData.isLoopTrip || false,
-      peopleCount: wizardData.peopleCount || 2,
-      hasDog: wizardData.hasDog || false,
-      tripPace: wizardData.tripPace || 'balanced',
-      maxDrivingHours: wizardData.maxDrivingHours || 6,
-      drivingPreference: wizardData.drivingPreference || 'flexible',
-      planningStyle: wizardData.planningStyle || 'help',
-      lodgingPreferences: wizardData.lodgingPreferences || [],
-      isNewCamper: wizardData.isNewCamper || false,
-      budgetStyle: wizardData.budgetStyle || 'midrange',
-      splurgeNights: wizardData.splurgeNights || 0,
-      mustHaves: wizardData.mustHaves || [],
+      isLoopTrip: (wizardData.isLoopTrip as boolean) || false,
+      peopleCount: (wizardData.peopleCount as number) || 2,
+      hasDog: (wizardData.hasDog as boolean) || false,
+      tripPace: (wizardData.tripPace as Trip['tripPace']) || 'balanced',
+      maxDrivingHours: (wizardData.maxDrivingHours as number) || 6,
+      drivingPreference: (wizardData.drivingPreference as Trip['drivingPreference']) || 'flexible',
+      planningStyle: (wizardData.planningStyle as Trip['planningStyle']) || 'help',
+      lodgingPreferences: (wizardData.lodgingPreferences as Trip['lodgingPreferences']) || [],
+      isNewCamper: (wizardData.isNewCamper as boolean) || false,
+      budgetStyle: (wizardData.budgetStyle as Trip['budgetStyle']) || 'midrange',
+      splurgeNights: (wizardData.splurgeNights as number) || 0,
+      mustHaves: (wizardData.mustHaves as Trip['mustHaves']) || [],
     };
 
     setTrip(newTrip);

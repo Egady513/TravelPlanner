@@ -3,8 +3,8 @@
 import { useState } from 'react';
 
 interface Step3Props {
-  data: any;
-  onUpdate: (data: any) => void;
+  data: Record<string, unknown>;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export default function Step3TravelStyle({ data, onUpdate }: Step3Props) {
@@ -14,13 +14,13 @@ export default function Step3TravelStyle({ data, onUpdate }: Step3Props) {
     drivingPreference?: 'early' | 'late' | 'flexible';
     planningStyle: string;
   }>({
-    tripPace: data.tripPace || 'balanced',
-    maxDrivingHours: data.maxDrivingHours || 6,
-    drivingPreference: data.drivingPreference ?? undefined,
-    planningStyle: data.planningStyle || 'help',
+    tripPace: (data.tripPace as string) || 'balanced',
+    maxDrivingHours: (data.maxDrivingHours as number) || 6,
+    drivingPreference: (data.drivingPreference as 'early' | 'late' | 'flexible' | undefined) ?? undefined,
+    planningStyle: (data.planningStyle as string) || 'help',
   });
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string | number) => {
     const updated = { ...formData, [field]: value };
     setFormData(updated);
     onUpdate(updated);

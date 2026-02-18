@@ -3,14 +3,14 @@
 import { useState } from 'react';
 
 interface Step4Props {
-  data: any;
-  onUpdate: (data: any) => void;
+  data: Record<string, unknown>;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export default function Step4WhereYouSleep({ data, onUpdate }: Step4Props) {
   const [formData, setFormData] = useState({
-    lodgingPreferences: data.lodgingPreferences || [],
-    isNewCamper: data.isNewCamper || false,
+    lodgingPreferences: (data.lodgingPreferences as string[]) || [],
+    isNewCamper: (data.isNewCamper as boolean) || false,
   });
 
   const toggleLodging = (type: string) => {
@@ -103,7 +103,7 @@ export default function Step4WhereYouSleep({ data, onUpdate }: Step4Props) {
           />
           <div>
             <div className="font-medium text-teal-900">
-              I'm new to camping (we'll give extra tips and conservative estimates)
+              I&apos;m new to camping (we&apos;ll give extra tips and conservative estimates)
             </div>
           </div>
         </label>

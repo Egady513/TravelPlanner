@@ -3,21 +3,21 @@
 import { useState } from 'react';
 
 interface Step1Props {
-  data: any;
-  onUpdate: (data: any) => void;
+  data: Record<string, unknown>;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export default function Step1TripBasics({ data, onUpdate }: Step1Props) {
   const [formData, setFormData] = useState({
-    name: data.name || '',
-    startDate: data.startDate || '',
-    endDate: data.endDate || '',
-    startingLocation: data.startingLocation?.address || '',
-    endingLocation: data.endingLocation?.address || '',
-    isLoopTrip: data.isLoopTrip || false,
+    name: (data.name as string) || '',
+    startDate: (data.startDate as string) || '',
+    endDate: (data.endDate as string) || '',
+    startingLocation: (data.startingLocation as string) || '',
+    endingLocation: (data.endingLocation as string) || '',
+    isLoopTrip: (data.isLoopTrip as boolean) || false,
   });
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string | boolean) => {
     let updated = { ...formData, [field]: value };
     // If start date is after end date, clear end date so the range stays valid
     if (field === 'startDate' && value && formData.endDate && value > formData.endDate) {

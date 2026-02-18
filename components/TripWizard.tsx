@@ -12,12 +12,12 @@ import Step6MustHaves from './wizard-steps/Step6MustHaves';
 interface TripWizardProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (tripData: any) => void;
+  onComplete: (tripData: Record<string, unknown>) => void;
 }
 
 export default function TripWizard({ isOpen, onClose, onComplete }: TripWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
 
   const totalSteps = 6;
 
@@ -54,7 +54,7 @@ export default function TripWizard({ isOpen, onClose, onComplete }: TripWizardPr
     }
   };
 
-  const updateFormData = (stepData: any) => {
+  const updateFormData = (stepData: Record<string, unknown>) => {
     setFormData({ ...formData, ...stepData });
   };
 

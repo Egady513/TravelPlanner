@@ -3,17 +3,17 @@
 import { useState } from 'react';
 
 interface Step5Props {
-  data: any;
-  onUpdate: (data: any) => void;
+  data: Record<string, unknown>;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export default function Step5Budget({ data, onUpdate }: Step5Props) {
   const [formData, setFormData] = useState({
-    budgetStyle: data.budgetStyle || 'midrange',
-    splurgeNights: data.splurgeNights || 2,
+    budgetStyle: (data.budgetStyle as string) || 'midrange',
+    splurgeNights: (data.splurgeNights as number) || 2,
   });
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string | number) => {
     const updated = { ...formData, [field]: value };
     setFormData(updated);
     onUpdate(updated);
