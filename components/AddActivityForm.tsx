@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTrip } from '@/lib/store';
 import { ActivityType, Coordinates, Activity, CampingSpot } from '@/types';
+import PlacesAutocomplete from './PlacesAutocomplete';
 
 interface AddActivityFormProps {
   coordinates: Coordinates;
@@ -52,6 +53,11 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
       setParsedCoords(coordinates);
     }
   }, [coordinateInput, coordinates]);
+
+  const handlePlaceSelected = (result: { name: string; coordinates: { lat: number; lng: number } }) => {
+    setName(result.name);
+    setParsedCoords(result.coordinates);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,13 +131,14 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Name
           </label>
-          <input
-            type="text"
+          <PlacesAutocomplete
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={setName}
+            onPlaceSelected={handlePlaceSelected}
             placeholder="e.g., Angels Landing Trail"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <p className="text-xs text-gray-400 mt-1">📍 Select from dropdown to auto-fill location</p>
         </div>
 
         {/* Coordinate Paste */}
