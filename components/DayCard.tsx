@@ -6,6 +6,7 @@ import { useTrip } from '@/lib/store';
 interface DayCardProps {
   day: Day;
   isSelected: boolean;
+  onSelect?: () => void;
 }
 
 const activityIcons: Record<string, string> = {
@@ -32,7 +33,7 @@ function getDogStatus(activities: Day['activities']) {
   return hasNoDogActivity ? 'no-dog' : 'dog';
 }
 
-export default function DayCard({ day, isSelected }: DayCardProps) {
+export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
   const { setSelectedDay, removeActivity } = useTrip();
   const dogStatus = getDogStatus(day.activities);
 
@@ -52,7 +53,10 @@ export default function DayCard({ day, isSelected }: DayCardProps) {
           ? 'border-blue-500 bg-blue-50 shadow-md'
           : 'border-gray-200 hover:border-gray-300 bg-white'
       }`}
-      onClick={() => setSelectedDay(day.dayNumber)}
+      onClick={() => {
+        setSelectedDay(day.dayNumber);
+        onSelect?.();
+      }}
     >
       <div className="flex items-center justify-between mb-2">
         <div>

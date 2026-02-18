@@ -1,12 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTrip } from '@/lib/store';
 import DayCard from './DayCard';
+import DayDetailPanel from './DayDetailPanel';
+import AddActivityForm from './AddActivityForm';
 
 export default function Sidebar() {
   const { trip, clearTrip, selectedDay } = useTrip();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showDetailPanel, setShowDetailPanel] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   if (!trip) return null;
 
@@ -21,7 +26,7 @@ export default function Sidebar() {
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
-          isCollapsed ? 'w-12' : 'w-80'
+          isCollapsed ? 'w-12' : showDetailPanel ? 'w-[640px]' : 'w-80'
         }`}
       >
         {/* Header */}
@@ -44,35 +49,59 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Days List */}
+        {/* Days List + Detail Panel */}
         {!isCollapsed && (
-          <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {trip.days.map((day) => (
-                <DayCard
-                  key={day.dayNumber}
-                  day={day}
-                  isSelected={selectedDay === day.dayNumber}
-                />
-              ))}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Day List Column */}
+            <div className="w-80 flex flex-col flex-shrink-0">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {trip.days.map((day) => (
+                  <DayCard
+                    key={day.dayNumber}
+                    day={day}
+                    isSelected={selectedDay === day.dayNumber}
+                    onSelect={() => setShowDetailPanel(true)}
+                  />
+                ))}
+              </div>
+              <div className="p-4 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to clear this trip? This cannot be undone.')) {
+                      clearTrip();
+                    }
+                  }}
+                  className="w-full text-sm text-red-600 hover:text-red-700 hover:bg-red-50 py-2 px-3 rounded-md transition-colors"
+                >
+                  Clear Trip
+                </button>
+              </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-4 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to clear this trip? This cannot be undone.')) {
-                    clearTrip();
-                  }
-                }}
-                className="w-full text-sm text-red-600 hover:text-red-700 hover:bg-red-50 py-2 px-3 rounded-md transition-colors"
-              >
-                Clear Trip
-              </button>
-            </div>
-          </>
+            {/* Detail Panel Column */}
+            {showDetailPanel && selectedDay && (
+              <DayDetailPanel
+                day={trip.days.find(d => d.dayNumber === selectedDay)!}
+                onClose={() => setShowDetailPanel(false)}
+                onAddActivity={() => setShowAddForm(true)}
+              />
+            )}
+          </div>
         )}
       </div>
+
+      {/* Add Activity Modal */}
+      {showAddForm && selectedDay && typeof window !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <AddActivityForm
+              coordinates={{ lat: 39.8283, lng: -98.5795 }}
+              onClose={() => setShowAddForm(false)}
+            />
+          </div>,
+          document.body
+        )
+      }
 
       {/* Mobile Bottom Sheet */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-h-64 overflow-y-auto z-10">
