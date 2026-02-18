@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Day } from '@/types';
 import { useTrip } from '@/lib/store';
+import { fetchWeatherForLocation, getWeatherEmoji } from '@/lib/weather';
 
 interface DayCardProps {
   day: Day;
@@ -34,8 +36,17 @@ function getDogStatus(activities: Day['activities']) {
 }
 
 export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
-  const { setSelectedDay, removeActivity } = useTrip();
+  const { setSelectedDay, removeActivity, setDayWeather } = useTrip();
   const dogStatus = getDogStatus(day.activities);
+
+  useEffect(() => {
+    if (day.weather || !day.date || day.activities.length === 0) return;
+    const firstActivity = day.activities[0];
+    const { lat, lng } = firstActivity.coordinates;
+    fetchWeatherForLocation(lat, lng, day.date).then(result => {
+      if (result) setDayWeather(day.dayNumber, result);
+    });
+  }, [day.dayNumber, day.date, day.activities.length, day.weather, setDayWeather]);
 
   const formatDate = (date?: Date) => {
     if (!date) return '';
@@ -77,6 +88,11 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
           {dogStatus === 'no-dog' && (
             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
               🚫 No Dog
+            </span>
+          )}
+          {day.weather && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              {getWeatherEmoji(day.weather)} {day.weather.high}°
             </span>
           )}
         </div>
