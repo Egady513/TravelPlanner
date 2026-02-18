@@ -4,9 +4,10 @@ import Link from 'next/link';
 
 interface HomepageProps {
   onStartPlanning: () => void;
+  onImportPlan?: () => void;
 }
 
-export default function Homepage({ onStartPlanning }: HomepageProps) {
+export default function Homepage({ onStartPlanning, onImportPlan }: HomepageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* Header */}
@@ -69,6 +70,15 @@ export default function Homepage({ onStartPlanning }: HomepageProps) {
             <span>+</span>
             <span>Start Planning</span>
           </button>
+          {onImportPlan && (
+            <button
+              onClick={onImportPlan}
+              className="flex items-center gap-2 px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 text-lg font-semibold rounded-lg transition-colors border-2 border-orange-200"
+            >
+              <span>📋</span>
+              <span>Import Existing Plan</span>
+            </button>
+          )}
           <Link
             href="/trips"
             className="flex items-center gap-2 px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 text-lg font-semibold rounded-lg transition-colors border-2 border-gray-200"

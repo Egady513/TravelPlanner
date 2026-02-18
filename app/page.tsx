@@ -8,10 +8,12 @@ import TripMap from "@/components/Map";
 import Sidebar from "@/components/Sidebar";
 import { Trip } from '@/types';
 import { parseLocalDate } from '@/lib/dateUtils';
+import ImportItinerary from "@/components/ImportItinerary";
 
 export default function Home() {
   const { trip, setTrip } = useTrip();
   const [showWizard, setShowWizard] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const handleWizardComplete = (wizardData: Record<string, unknown>) => {
     // Parse as local dates so 6/2 stays 6/2 (not UTC which can become 6/1)
@@ -84,12 +86,13 @@ export default function Home() {
   // Otherwise show homepage
   return (
     <>
-      <Homepage onStartPlanning={() => setShowWizard(true)} />
+      <Homepage onStartPlanning={() => setShowWizard(true)} onImportPlan={() => setShowImport(true)} />
       <TripWizard
         isOpen={showWizard}
         onClose={() => setShowWizard(false)}
         onComplete={handleWizardComplete}
       />
+      <ImportItinerary isOpen={showImport} onClose={() => setShowImport(false)} />
     </>
   );
 }
