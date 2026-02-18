@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Day } from '@/types';
 import { useTrip } from '@/lib/store';
 import { fetchWeatherForLocation, getWeatherEmoji } from '@/lib/weather';
+import { getValidationEmoji } from '@/lib/validation';
 
 interface DayCardProps {
   day: Day;
@@ -88,6 +89,11 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
           {dogStatus === 'no-dog' && (
             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
               🚫 No Dog
+            </span>
+          )}
+          {day.validationStatus.level !== 'success' && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium">
+              {getValidationEmoji(day.validationStatus.level)}
             </span>
           )}
           {day.weather && (
