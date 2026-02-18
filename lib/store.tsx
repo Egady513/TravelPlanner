@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { Trip, Activity, WeatherData } from '@/types';
 import { storage } from './storage';
+import { validateTrip } from './validation';
 
 interface TripContextType {
   trip: Trip | null;
@@ -77,8 +78,10 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, [trip, isInitialized]);
 
   const setTrip = useCallback((newTrip: Trip) => {
-    setTripState(newTrip);
-    if (newTrip.days.length > 0) {
+    const validatedDays = validateTrip(newTrip);
+    const validatedTrip = { ...newTrip, days: validatedDays };
+    setTripState(validatedTrip);
+    if (validatedTrip.days.length > 0) {
       setSelectedDay(prev => prev ?? 1);
     }
   }, []);
@@ -97,7 +100,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
         return day;
       });
 
-      return { ...prev, days: updatedDays };
+      const tripWithUpdates = { ...prev, days: updatedDays };
+      const validatedDays = validateTrip(tripWithUpdates);
+      return { ...tripWithUpdates, days: validatedDays };
     });
   }, []);
 
@@ -110,7 +115,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
         activities: day.activities.filter(a => a.id !== activityId),
       }));
 
-      return { ...prev, days: updatedDays };
+      const tripWithUpdates = { ...prev, days: updatedDays };
+      const validatedDays = validateTrip(tripWithUpdates);
+      return { ...tripWithUpdates, days: validatedDays };
     });
   }, []);
 
@@ -127,7 +134,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
         ),
       }));
 
-      return { ...prev, days: updatedDays };
+      const tripWithUpdates = { ...prev, days: updatedDays };
+      const validatedDays = validateTrip(tripWithUpdates);
+      return { ...tripWithUpdates, days: validatedDays };
     });
   }, []);
 
@@ -141,7 +150,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
           : day
       );
 
-      return { ...prev, days: updatedDays };
+      const tripWithUpdates = { ...prev, days: updatedDays };
+      const validatedDays = validateTrip(tripWithUpdates);
+      return { ...tripWithUpdates, days: validatedDays };
     });
   }, []);
 
