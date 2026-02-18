@@ -18,8 +18,9 @@
 
 | ID | Task | Status | Assigned | Notes |
 |----|------|--------|----------|-------|
-| P0-TA | Google Places Autocomplete for name/location fields | 🔲 pending | — | Create `components/PlacesAutocomplete.tsx`, modify `AddActivityForm.tsx` |
-| P0-TB | Driving activity type (start + finish locations) | 🔲 pending | — | Modify `types/index.ts`, `AddActivityForm.tsx`, `DayCard.tsx`, `Map.tsx` — depends on P0-TA |
+| P0-TA | Google Places Autocomplete for name/location fields | ✅ done | subagent-1 | `PlacesAutocomplete.tsx` + `AddActivityForm.tsx` |
+| P0-TB | Driving activity type (start + finish locations) | ✅ done | subagent-2 | All 5 files, spec verified |
+| P0-TC | Fix pre-existing ESLint errors in wizard + storage files | ✅ done | main | commit d7de8da — clean build restored |
 
 **Definition of done (Phase 0):**
 - [ ] Typing a place name in AddActivityForm shows a live Google Places dropdown

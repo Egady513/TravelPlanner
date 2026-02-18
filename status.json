@@ -6,7 +6,7 @@
       "role": "Lead Developer / PM",
       "model": "claude-sonnet-4-6",
       "status": "active",
-      "currentTask": "Dispatching subagent: P0-TA Google Places Autocomplete",
+      "currentTask": "Phase 1 — P1-T1: Dog/No-Dog badge on DayCard",
       "lastActive": "2026-02-18"
     }
   ],
@@ -45,6 +45,21 @@
       "time": "session-2",
       "agent": "agent-validation",
       "message": "DONE: lib/validation.ts — lodging validation engine complete (all 4 PRD rules)"
+    },
+    {
+      "time": "session-3",
+      "agent": "subagent-1",
+      "message": "DONE P0-TA: Google Places Autocomplete — PlacesAutocomplete.tsx created, AddActivityForm.tsx integrated (commit 39b507e)"
+    },
+    {
+      "time": "session-3",
+      "agent": "subagent-2",
+      "message": "DONE P0-TB: Driving activity type — DrivingActivity type, dashed polylines, 🚗 icons, two-location form (commits verified)"
+    },
+    {
+      "time": "session-3",
+      "agent": "claude-code",
+      "message": "DONE P0-TC: Fixed 30+ pre-existing ESLint/TypeScript errors in wizard steps, TripWizard, storage, page files. Clean build restored (commit d7de8da)"
     }
   ],
   "tasks": [
@@ -53,21 +68,29 @@
       "subject": "Google Places Autocomplete for activity name/location fields",
       "phase": "Phase 0 - Activity Form Foundations",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "completed",
       "assigned": "subagent-1",
-      "files": ["components/PlacesAutocomplete.tsx", "components/AddActivityForm.tsx"],
-      "estimate": "1.5 hrs"
+      "commit": "39b507e",
+      "files": ["components/PlacesAutocomplete.tsx", "components/AddActivityForm.tsx"]
     },
     {
       "id": "P0-TB",
       "subject": "Driving activity type with start + finish locations",
       "phase": "Phase 0 - Activity Form Foundations",
       "priority": "P0",
-      "status": "pending",
-      "assigned": null,
-      "files": ["types/index.ts", "components/AddActivityForm.tsx", "components/DayCard.tsx", "components/MarkerInfoWindow.tsx", "components/Map.tsx"],
-      "estimate": "1.5 hrs",
-      "blockedBy": ["P0-TA"]
+      "status": "completed",
+      "assigned": "subagent-2",
+      "files": ["types/index.ts", "components/AddActivityForm.tsx", "components/DayCard.tsx", "components/MarkerInfoWindow.tsx", "components/Map.tsx"]
+    },
+    {
+      "id": "P0-TC",
+      "subject": "Fix pre-existing ESLint/TypeScript errors in wizard + storage files",
+      "phase": "Phase 0 - Activity Form Foundations",
+      "priority": "P0",
+      "status": "completed",
+      "assigned": "claude-code",
+      "commit": "d7de8da",
+      "files": ["app/page.tsx", "app/trips/page.tsx", "components/Homepage.tsx", "components/TripWizard.tsx", "components/wizard-steps/Step1-6.tsx", "lib/storage.ts"]
     },
     {
       "id": "P1-T1",
@@ -177,70 +200,22 @@
       "files": ["components/Map.tsx"],
       "estimate": "45 min",
       "blockedBy": []
-    },
-    {
-      "id": "OLD-1",
-      "subject": "Fix map loading deadlock (mapRef null)",
-      "phase": "Foundation",
-      "priority": "P0",
-      "status": "completed",
-      "assigned": "claude-code"
-    },
-    {
-      "id": "OLD-2",
-      "subject": "Build Weather.gov API utility (lib/weather.ts)",
-      "phase": "Foundation",
-      "priority": "P1",
-      "status": "completed",
-      "assigned": "agent-weather"
-    },
-    {
-      "id": "OLD-3",
-      "subject": "Build lodging validation engine (lib/validation.ts)",
-      "phase": "Foundation",
-      "priority": "P1",
-      "status": "completed",
-      "assigned": "agent-validation"
-    },
-    {
-      "id": "OLD-4",
-      "subject": "Add Supabase backend for persistent trip storage",
-      "phase": "Foundation",
-      "priority": "P1",
-      "status": "completed",
-      "assigned": "claude-code"
-    },
-    {
-      "id": "OLD-5",
-      "subject": "Fix Google Maps: bypass broken js-api-loader v2",
-      "phase": "Foundation",
-      "priority": "P0",
-      "status": "completed",
-      "assigned": "claude-code"
-    },
-    {
-      "id": "OLD-6",
-      "subject": "6-step wizard redesign with homepage and My Trips page",
-      "phase": "Foundation",
-      "priority": "P1",
-      "status": "completed",
-      "assigned": "claude-code"
     }
   ],
   "metrics": {
     "activeAgents": 1,
-    "pendingTasks": 11,
-    "completedTasks": 6,
-    "overallProgress": 37,
-    "currentPhase": "Phase 1: Core UX Gaps (P0) — Ready to execute",
+    "pendingTasks": 10,
+    "completedTasks": 9,
+    "overallProgress": 47,
+    "currentPhase": "Phase 1: Core UX Gaps — Starting P1-T1 (dog badge)",
     "phases": {
       "foundation": { "name": "Foundation", "total": 6, "done": 6, "pct": 100 },
-      "phase0_forms": { "name": "Phase 0 — Activity Form Foundations", "total": 2, "done": 0, "pct": 0 },
+      "phase0_forms": { "name": "Phase 0 — Activity Form Foundations", "total": 3, "done": 3, "pct": 100 },
       "phase1_ux": { "name": "Phase 1 — Core UX", "total": 3, "done": 0, "pct": 0 },
       "phase2_import": { "name": "Phase 2 — Smart Import", "total": 4, "done": 0, "pct": 0 },
       "phase3_intelligence": { "name": "Phase 3 — Intelligence", "total": 3, "done": 0, "pct": 0 }
     },
-    "nextUnblockedTasks": ["P0-TA", "P0-TB (after P0-TA)"],
+    "nextUnblockedTasks": ["P1-T1", "P1-T2", "P2-T4", "P3-T8", "P3-T10"],
     "planFile": "docs/plans/2026-02-18-option-c-hybrid.md",
     "backlogFile": "docs/BACKLOG.md"
   }
