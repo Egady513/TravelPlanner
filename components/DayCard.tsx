@@ -26,8 +26,15 @@ const activityColors: Record<string, string> = {
   driving: 'text-gray-600',
 };
 
+function getDogStatus(activities: Day['activities']) {
+  if (activities.length === 0) return null;
+  const hasNoDogActivity = activities.some(a => a.isDogFriendly === false);
+  return hasNoDogActivity ? 'no-dog' : 'dog';
+}
+
 export default function DayCard({ day, isSelected }: DayCardProps) {
   const { setSelectedDay, removeActivity } = useTrip();
+  const dogStatus = getDogStatus(day.activities);
 
   const formatDate = (date?: Date) => {
     if (!date) return '';
@@ -54,8 +61,20 @@ export default function DayCard({ day, isSelected }: DayCardProps) {
             <p className="text-xs text-gray-500">{formatDate(day.date)}</p>
           )}
         </div>
-        <div className="text-sm text-gray-500">
-          {day.activities.length} {day.activities.length === 1 ? 'activity' : 'activities'}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">
+            {day.activities.length} {day.activities.length === 1 ? 'activity' : 'activities'}
+          </span>
+          {dogStatus === 'dog' && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+              🐕 Dog
+            </span>
+          )}
+          {dogStatus === 'no-dog' && (
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
+              🚫 No Dog
+            </span>
+          )}
         </div>
       </div>
 
