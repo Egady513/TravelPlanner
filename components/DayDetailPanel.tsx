@@ -56,11 +56,16 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
         {dogStatus === 'no-dog' && (
           <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">🚫 No Dog</span>
         )}
-        {day.validationStatus.level !== 'success' && (
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${getValidationColor(day.validationStatus.level)}`}>
-            {getValidationEmoji(day.validationStatus.level)} {day.validationStatus.messages[0]?.message}
-          </span>
-        )}
+        {day.validationStatus.level !== 'success' && day.validationStatus.messages.filter(m => m.level !== 'success').map((msg, i) => (
+          <div key={i} className="w-full">
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${getValidationColor(msg.level)}`}>
+              {getValidationEmoji(msg.level)} {msg.message}
+            </span>
+            {msg.suggestion && (
+              <p className="text-xs text-gray-500 mt-0.5 pl-1">{msg.suggestion}</p>
+            )}
+          </div>
+        ))}
         {day.weather && (
           <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
             {day.weather.high}°/{day.weather.low}° {day.weather.shortForecast}
