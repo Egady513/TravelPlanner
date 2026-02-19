@@ -15,7 +15,9 @@ export default function Home() {
   const { trip, setTrip } = useTrip();
   const [showWizard, setShowWizard] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by DashboardModal in V2-F1
   const [showDashboard, setShowDashboard] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by ScoutPanel in V2-B4
   const [showScout, setShowScout] = useState(false);
 
   const handleWizardComplete = (wizardData: Record<string, unknown>) => {
