@@ -24,6 +24,7 @@ export interface Activity {
   dayNumber: number;
   isDogFriendly: boolean;
   notes?: string;
+  showOnMap?: boolean;  // undefined / true = visible on map, false = hidden
 }
 
 export interface Trail extends Activity {
