@@ -9,11 +9,14 @@ import Sidebar from "@/components/Sidebar";
 import { Trip } from '@/types';
 import { parseLocalDate } from '@/lib/dateUtils';
 import ImportItinerary from "@/components/ImportItinerary";
+import TopNav from "@/components/TopNav";
 
 export default function Home() {
   const { trip, setTrip } = useTrip();
   const [showWizard, setShowWizard] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showScout, setShowScout] = useState(false);
 
   const handleWizardComplete = (wizardData: Record<string, unknown>) => {
     // Parse as local dates so 6/2 stays 6/2 (not UTC which can become 6/1)
@@ -68,17 +71,18 @@ export default function Home() {
   if (trip) {
     return (
       <div className="flex flex-col h-screen">
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Road Trip Planner</h1>
-          <p className="text-sm text-gray-600">Plan your perfect adventure with your dog</p>
-        </header>
-
+        <TopNav
+          onImport={() => setShowImport(true)}
+          onDashboard={() => setShowDashboard(true)}
+          onScout={() => setShowScout(prev => !prev)}
+        />
         <main className="flex-1 flex overflow-hidden">
           <Sidebar />
           <div className="flex-1 relative">
             <TripMap />
           </div>
         </main>
+        <ImportItinerary isOpen={showImport} onClose={() => setShowImport(false)} />
       </div>
     );
   }
