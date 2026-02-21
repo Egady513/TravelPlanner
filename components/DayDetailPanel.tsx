@@ -88,65 +88,65 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
         {day.activities.length === 0 && (
           <p className="text-sm text-gray-400 italic text-center py-8">No activities yet</p>
         )}
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <Droppable droppableId={`day-${day.dayNumber}`}>
-                    {(provided) => (
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId={`day-${day.dayNumber}`}>
+            {(provided) => (
+              <div
+                className="space-y-2"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                {day.activities.map((activity, index) => (
+                  <Draggable key={activity.id} draggableId={activity.id} index={index}>
+                    {(dragProvided, dragSnapshot) => (
                       <div
-                        className="space-y-2"
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
+                        ref={dragProvided.innerRef}
+                        {...dragProvided.draggableProps}
+                        className={`flex items-start gap-3 group p-2 rounded-lg ${
+                          dragSnapshot.isDragging ? 'bg-orange-50 shadow-md' : 'hover:bg-gray-50'
+                        }`}
                       >
-                        {day.activities.map((activity, index) => (
-                          <Draggable key={activity.id} draggableId={activity.id} index={index}>
-                            {(dragProvided, dragSnapshot) => (
-                              <div
-                                ref={dragProvided.innerRef}
-                                {...dragProvided.draggableProps}
-                                className={`flex items-start gap-3 group p-2 rounded-lg ${
-                                  dragSnapshot.isDragging ? 'bg-orange-50 shadow-md' : 'hover:bg-gray-50'
-                                }`}
-                              >
-                                {/* Drag handle + icon */}
-                                <div
-                                  {...dragProvided.dragHandleProps}
-                                  className="flex flex-col items-center flex-shrink-0 pt-1 cursor-grab active:cursor-grabbing"
-                                >
-                                  <span className="text-gray-300 text-xs leading-none select-none">⠿</span>
-                                  <span className="text-xl mt-0.5">{activityIcons[activity.type] ?? '📍'}</span>
-                                  {index < day.activities.length - 1 && (
-                                    <div className="w-0.5 h-4 bg-gray-200 mt-1" />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 text-sm truncate">{activity.name}</p>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-xs text-gray-500 capitalize">{activity.type}</span>
-                                    {activity.isDogFriendly ? (
-                                      <span className="text-xs text-green-600">🐕</span>
-                                    ) : (
-                                      <span className="text-xs text-red-500">🚫</span>
-                                    )}
-                                  </div>
-                                  {activity.notes && (
-                                    <p className="text-xs text-gray-400 mt-1 truncate">{activity.notes}</p>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={() => removeActivity(activity.id)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 text-xs p-1"
-                                  aria-label="Remove"
-                                >
-                                  ✕
-                                </button>
-                              </div>
+                        {/* Drag handle + icon */}
+                        <div
+                          {...dragProvided.dragHandleProps}
+                          className="flex flex-col items-center flex-shrink-0 pt-1 cursor-grab active:cursor-grabbing"
+                        >
+                          <span className="text-gray-300 text-xs leading-none select-none">⠿</span>
+                          <span className="text-xl mt-0.5">{activityIcons[activity.type] ?? '📍'}</span>
+                          {index < day.activities.length - 1 && (
+                            <div className="w-0.5 h-4 bg-gray-200 mt-1" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{activity.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-gray-500 capitalize">{activity.type}</span>
+                            {activity.isDogFriendly ? (
+                              <span className="text-xs text-green-600">🐕</span>
+                            ) : (
+                              <span className="text-xs text-red-500">🚫</span>
                             )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
+                          </div>
+                          {activity.notes && (
+                            <p className="text-xs text-gray-400 mt-1 truncate">{activity.notes}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeActivity(activity.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 text-xs p-1"
+                          aria-label="Remove"
+                        >
+                          ✕
+                        </button>
                       </div>
                     )}
-                  </Droppable>
-                </DragDropContext>
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       </div>
 
       {/* Add Activity CTA */}
