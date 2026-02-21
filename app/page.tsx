@@ -10,6 +10,7 @@ import { Trip } from '@/types';
 import { parseLocalDate } from '@/lib/dateUtils';
 import ImportItinerary from "@/components/ImportItinerary";
 import TopNav from "@/components/TopNav";
+import ScoutPanel from "@/components/ScoutPanel";
 
 export default function Home() {
   const { trip, setTrip } = useTrip();
@@ -17,7 +18,6 @@ export default function Home() {
   const [showImport, setShowImport] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by DashboardModal in V2-F1
   const [showDashboard, setShowDashboard] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by ScoutPanel in V2-B4
   const [showScout, setShowScout] = useState(false);
 
   const handleWizardComplete = (wizardData: Record<string, unknown>) => {
@@ -85,6 +85,7 @@ export default function Home() {
           </div>
         </main>
         <ImportItinerary isOpen={showImport} onClose={() => setShowImport(false)} />
+        <ScoutPanel isOpen={showScout} onClose={() => setShowScout(false)} />
       </div>
     );
   }
