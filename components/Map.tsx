@@ -205,7 +205,7 @@ export default function TripMap(props: MapProps = {}) {
       allActivities.forEach(activity => bounds.extend(activity.coordinates));
       map.fitBounds(bounds);
     }
-  }, [map, trip, showActivities, showDriving, showLodging, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, trip, showActivities, showDriving, showLodging, selectedDays]);
 
   // Draw routes between activities in each day
   useEffect(() => {
@@ -233,7 +233,7 @@ export default function TripMap(props: MapProps = {}) {
 
       polylinesRef.current.push(polyline);
     });
-  }, [map, trip, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, trip, selectedDays]);
 
   // Dashed polylines for driving activity start→end
   useEffect(() => {
@@ -270,7 +270,7 @@ export default function TripMap(props: MapProps = {}) {
       });
       drivingPolylinesRef.current.push(polyline);
     });
-  }, [map, trip, showDriving, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, trip, showDriving, selectedDays]);
 
   // Fit map to selected day's activities when selectedDay changes
   useEffect(() => {
@@ -295,7 +295,7 @@ export default function TripMap(props: MapProps = {}) {
         <div ref={mapRef} style={{ height: '100%' }} />
 
         {/* Filter overlay panel — top-right corner */}
-        {trip && (
+        {trip && !loading && !error && (
           <div className="absolute top-2 right-2 z-10 bg-white rounded-lg shadow-md p-3 text-sm min-w-[160px]">
             <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Layers</p>
 
