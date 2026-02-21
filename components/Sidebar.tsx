@@ -1,17 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTrip } from '@/lib/store';
 import DayCard from './DayCard';
 import DayDetailPanel from './DayDetailPanel';
 import AddActivityForm from './AddActivityForm';
+import ScoutTip from '@/components/ScoutTip';
 
 export default function Sidebar() {
   const { trip, clearTrip, selectedDay } = useTrip();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [tips, setTips] = useState<Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }>>([]);
+  const [dismissedTipIds, setDismissedTipIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!trip) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/scout/tips', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trip }),
+        });
+        const data = await res.json() as { tips?: Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }> };
+        if (data.tips && data.tips.length > 0) {
+          setTips(data.tips);
+        }
+      } catch {
+        // Silent fail — tips are optional
+      }
+    }, 3000); // 3 second debounce
+
+    return () => clearTimeout(timer);
+  }, [trip]);
+
+  const handleDismissTip = (id: string) => {
+    setDismissedTipIds(prev => new Set([...Array.from(prev), id]));
+  };
+
+  const visibleTips = tips.filter(t => !dismissedTipIds.has(t.id));
 
   if (!trip) return null;
 
@@ -54,6 +85,23 @@ export default function Sidebar() {
           <div className="flex flex-1 overflow-hidden">
             {/* Day List Column */}
             <div className="w-80 flex flex-col flex-shrink-0">
+              {/* Scout Tips */}
+              {visibleTips.length > 0 && (
+                <div className="px-3 pt-3 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                    <span>🐕</span> Scout Tips
+                  </p>
+                  {visibleTips.map(tip => (
+                    <ScoutTip
+                      key={tip.id}
+                      id={tip.id}
+                      message={tip.message}
+                      type={tip.type}
+                      onDismiss={handleDismissTip}
+                    />
+                  ))}
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {trip.days.map((day) => (
                   <DayCard
