@@ -14,7 +14,15 @@ export default function Sidebar() {
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [tips, setTips] = useState<Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }>>([]);
-  const [dismissedTipIds, setDismissedTipIds] = useState<Set<string>>(new Set());
+  const [dismissedTipIds, setDismissedTipIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set<string>();
+    try {
+      const saved = localStorage.getItem('scout-dismissed-tips');
+      return saved ? new Set<string>(JSON.parse(saved) as string[]) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
 
   useEffect(() => {
     if (!trip) return;
@@ -39,7 +47,13 @@ export default function Sidebar() {
   }, [trip]);
 
   const handleDismissTip = (id: string) => {
-    setDismissedTipIds(prev => new Set([...Array.from(prev), id]));
+    setDismissedTipIds(prev => {
+      const next = new Set([...Array.from(prev), id]);
+      try {
+        localStorage.setItem('scout-dismissed-tips', JSON.stringify(Array.from(next)));
+      } catch { /* ignore */ }
+      return next;
+    });
   };
 
   const visibleTips = tips.filter(t => !dismissedTipIds.has(t.id));
