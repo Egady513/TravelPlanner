@@ -4,10 +4,15 @@ import type { Trip } from '@/types';
 const client = new Anthropic();
 
 export async function POST(request: Request) {
-  const body = await request.json() as {
-    messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
-    tripContext?: Trip;
-  };
+  let body: { messages?: Array<{ role: 'user' | 'assistant'; content: string }>; tripContext?: Trip };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Invalid JSON in request body' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
   const { messages, tripContext } = body;
 
@@ -41,18 +46,26 @@ ${JSON.stringify(tripContext, null, 2)}`;
 
   const readableStream = new ReadableStream({
     async start(controller) {
+      let closed = false;
+
       stream.on('text', (text) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+        if (!closed) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
       });
 
       stream.on('message', () => {
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
+        if (!closed) {
+          closed = true;
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        }
       });
 
       stream.on('error', (err) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
-        controller.close();
+        if (!closed) {
+          closed = true;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
+          controller.close();
+        }
       });
     },
   });
