@@ -79,6 +79,14 @@ export default function TripMap(props: MapProps = {}) {
   // Info window state
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
+  // Layer filter state (all on by default)
+  const [showActivities, setShowActivities] = useState(true);
+  const [showDriving, setShowDriving] = useState(true);
+  const [showLodging, setShowLodging] = useState(true);
+
+  // Day selector state — empty array means "All Days"
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
   // Markers
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
 
@@ -89,6 +97,10 @@ export default function TripMap(props: MapProps = {}) {
   const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
 
   const { trip, selectedDay } = useTrip();
+
+  // Helper: is a given day number currently selected?
+  const isDaySelected = (dayNum: number) =>
+    selectedDays.length === 0 || selectedDays.includes(dayNum);
 
   // Initialize map
   useEffect(() => {
@@ -146,7 +158,7 @@ export default function TripMap(props: MapProps = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryKey]);
 
-  // Update markers when trip activities change
+  // Update markers when trip activities or filters change
   useEffect(() => {
     if (!map || !trip) return;
 
@@ -154,7 +166,15 @@ export default function TripMap(props: MapProps = {}) {
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current.clear();
 
-    const allActivities = trip.days.flatMap(day => day.activities).filter(a => a.showOnMap !== false);
+    const allActivities = trip.days.flatMap(day => day.activities).filter(a => {
+      if (a.showOnMap === false) return false;
+      if (!isDaySelected(a.dayNumber)) return false;
+
+      if (a.type === 'driving') return showDriving;
+      if (a.type === 'hotel') return showLodging;
+      // trail, restaurant, park, camping → Activities layer
+      return showActivities;
+    });
 
     allActivities.forEach(activity => {
       const marker = new google.maps.Marker({
@@ -179,13 +199,13 @@ export default function TripMap(props: MapProps = {}) {
       markersRef.current.set(activity.id, marker);
     });
 
-    // Fit map to show all markers
+    // Fit map to show all visible markers
     if (allActivities.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       allActivities.forEach(activity => bounds.extend(activity.coordinates));
       map.fitBounds(bounds);
     }
-  }, [map, trip]);
+  }, [map, trip, showActivities, showDriving, showLodging, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Draw routes between activities in each day
   useEffect(() => {
@@ -197,6 +217,8 @@ export default function TripMap(props: MapProps = {}) {
     const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
     trip.days.forEach((day, index) => {
+      if (!isDaySelected(day.dayNumber)) return;
+
       const visibleActivities = day.activities.filter(a => a.showOnMap !== false);
       if (visibleActivities.length < 2) return;
 
@@ -211,7 +233,7 @@ export default function TripMap(props: MapProps = {}) {
 
       polylinesRef.current.push(polyline);
     });
-  }, [map, trip]);
+  }, [map, trip, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dashed polylines for driving activity start→end
   useEffect(() => {
@@ -220,8 +242,13 @@ export default function TripMap(props: MapProps = {}) {
     drivingPolylinesRef.current.forEach(p => p.setMap(null));
     drivingPolylinesRef.current = [];
 
-    const allActivities = trip.days.flatMap(d => d.activities).filter(a => a.showOnMap !== false);
-    const drivingActivities = allActivities.filter(a => a.type === 'driving') as DrivingActivity[];
+    if (!showDriving) return;
+
+    const allActivities = trip.days
+      .flatMap(d => d.activities)
+      .filter(a => a.showOnMap !== false && a.type === 'driving' && isDaySelected(a.dayNumber));
+
+    const drivingActivities = allActivities as DrivingActivity[];
 
     drivingActivities.forEach(drive => {
       const polyline = new google.maps.Polyline({
@@ -243,7 +270,7 @@ export default function TripMap(props: MapProps = {}) {
       });
       drivingPolylinesRef.current.push(polyline);
     });
-  }, [map, trip]);
+  }, [map, trip, showDriving, selectedDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fit map to selected day's activities when selectedDay changes
   useEffect(() => {
@@ -263,8 +290,81 @@ export default function TripMap(props: MapProps = {}) {
 
   return (
     <>
-      {/* Map container: always in DOM so mapRef is available during async init */}
-      <div ref={mapRef} className={className} style={{ visibility: (loading || error) ? 'hidden' : 'visible' }} />
+      {/* Map wrapper: relative so the filter overlay can be positioned absolutely inside it */}
+      <div className={`${className} relative`} style={{ visibility: (loading || error) ? 'hidden' : 'visible' }}>
+        <div ref={mapRef} style={{ height: '100%' }} />
+
+        {/* Filter overlay panel — top-right corner */}
+        {trip && (
+          <div className="absolute top-2 right-2 z-10 bg-white rounded-lg shadow-md p-3 text-sm min-w-[160px]">
+            <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Layers</p>
+
+            <label className="flex items-center gap-2 cursor-pointer mb-1">
+              <input
+                type="checkbox"
+                checked={showActivities}
+                onChange={e => setShowActivities(e.target.checked)}
+              />
+              <span>🏔️ Activities</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer mb-1">
+              <input
+                type="checkbox"
+                checked={showDriving}
+                onChange={e => setShowDriving(e.target.checked)}
+              />
+              <span>🚗 Driving</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer mb-2">
+              <input
+                type="checkbox"
+                checked={showLodging}
+                onChange={e => setShowLodging(e.target.checked)}
+              />
+              <span>🏨 Lodging</span>
+            </label>
+
+            <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide border-t pt-2">Days</p>
+
+            <div className="flex flex-wrap gap-1">
+              {/* All Days chip */}
+              <button
+                onClick={() => setSelectedDays([])}
+                className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                  selectedDays.length === 0
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
+                }`}
+              >
+                All
+              </button>
+
+              {/* Individual day chips */}
+              {trip.days.map(day => (
+                <button
+                  key={day.dayNumber}
+                  onClick={() => {
+                    setSelectedDays(prev =>
+                      prev.includes(day.dayNumber)
+                        ? prev.filter(d => d !== day.dayNumber)
+                        : [...prev, day.dayNumber]
+                    );
+                  }}
+                  className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                    selectedDays.includes(day.dayNumber)
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
+                  }`}
+                >
+                  {day.dayNumber}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {error && (
         <div className={`${className} absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg`}>
