@@ -31,14 +31,18 @@ export async function POST(req: NextRequest) {
     });
 
     const content = message.content[0];
-    if (content.type !== 'text') {
+    if (!content || content.type !== 'text') {
       return NextResponse.json({ tips: [] });
     }
 
     let tips: Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }> = [];
     try {
       tips = JSON.parse(content.text);
-    } catch {
+    } catch (parseErr) {
+      console.error('Scout tips: failed to parse model response as JSON', {
+        responseText: content.text.slice(0, 200),
+        error: parseErr instanceof Error ? parseErr.message : String(parseErr)
+      });
       return NextResponse.json({ tips: [] });
     }
 
