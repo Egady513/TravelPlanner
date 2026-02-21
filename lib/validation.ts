@@ -6,6 +6,7 @@ import type {
   ValidationStatus,
   LodgingType,
   DrivingActivity,
+  TripPace,
 } from '../types/index';
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ export function validateDay(
     hasDog: boolean;
     isNewCamper: boolean;
     maxDrivingHours: number;
-    tripPace: 'relaxed' | 'balanced' | 'adventure';
+    tripPace: TripPace;
   }
 ): ValidationStatus {
   const messages: ValidationMessage[] = [];
