@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTrip } from '@/lib/store';
 import { Activity, Coordinates, ActivityType, DrivingActivity } from '@/types';
@@ -96,11 +96,28 @@ export default function TripMap(props: MapProps = {}) {
   // Dashed polylines for driving activity start→end segments
   const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
 
+  // Drive time cache and InfoWindow for hover tooltips
+  const driveTimeCache = useRef<Map<string, string>>(new Map());
+  const driveTimeInfoWindow = useRef<google.maps.InfoWindow | null>(null);
+
   const { trip, selectedDay } = useTrip();
 
   // Helper: is a given day number currently selected?
   const isDaySelected = (dayNum: number) =>
     selectedDays.length === 0 || selectedDays.includes(dayNum);
+
+  // Helper: show a drive time InfoWindow at a given position
+  const showDriveTimeTooltip = useCallback((position: google.maps.LatLng | null, label: string) => {
+    if (!map || !position) return;
+
+    if (!driveTimeInfoWindow.current) {
+      driveTimeInfoWindow.current = new google.maps.InfoWindow();
+    }
+
+    driveTimeInfoWindow.current.setContent(`<div style="font-size:13px;padding:2px 4px">${label}</div>`);
+    driveTimeInfoWindow.current.setPosition(position);
+    driveTimeInfoWindow.current.open(map);
+  }, [map]);
 
   // Initialize map
   useEffect(() => {
@@ -269,8 +286,39 @@ export default function TripMap(props: MapProps = {}) {
         map,
       });
       drivingPolylinesRef.current.push(polyline);
+
+      const cacheKey = `${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}→${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
+
+      polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
+        // Check cache first
+        if (driveTimeCache.current.has(cacheKey)) {
+          showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(cacheKey)!);
+          return;
+        }
+
+        const service = new google.maps.DistanceMatrixService();
+        service.getDistanceMatrix({
+          origins: [drive.startLocation.coordinates],
+          destinations: [drive.endLocation.coordinates],
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.IMPERIAL,
+        }, (result, status) => {
+          if (status === 'OK' && result) {
+            const element = result.rows[0]?.elements[0];
+            if (element?.status === 'OK') {
+              const label = `🚗 ${element.duration?.text} · ${element.distance?.text}`;
+              driveTimeCache.current.set(cacheKey, label);
+              showDriveTimeTooltip(e.latLng, label);
+            }
+          }
+        });
+      });
+
+      polyline.addListener('mouseout', () => {
+        driveTimeInfoWindow.current?.close();
+      });
     });
-  }, [map, trip, showDriving, selectedDays]);
+  }, [map, trip, showDriving, selectedDays, showDriveTimeTooltip]);
 
   // Fit map to selected day's activities when selectedDay changes
   useEffect(() => {
