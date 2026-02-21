@@ -26,7 +26,7 @@ function getDogStatus(activities: Activity[]) {
 }
 
 export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetailPanelProps) {
-  const { removeActivity, reorderActivities } = useTrip();
+  const { removeActivity, reorderActivities, updateActivity } = useTrip();
   const dogStatus = getDogStatus(day.activities);
 
   const formatDate = (date?: Date) => {
@@ -131,6 +131,17 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
                             <p className="text-xs text-gray-400 mt-1 truncate">{activity.notes}</p>
                           )}
                         </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateActivity(activity.id, { showOnMap: activity.showOnMap === false ? true : false });
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 text-xs p-1"
+                          title={activity.showOnMap === false ? 'Show on map' : 'Hide from map'}
+                          aria-label={activity.showOnMap === false ? 'Show on map' : 'Hide from map'}
+                        >
+                          {activity.showOnMap === false ? '👁️‍🗨️' : '👁️'}
+                        </button>
                         <button
                           onClick={() => removeActivity(activity.id)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 text-xs p-1"

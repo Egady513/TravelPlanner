@@ -154,7 +154,7 @@ export default function TripMap(props: MapProps = {}) {
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current.clear();
 
-    const allActivities = trip.days.flatMap(day => day.activities);
+    const allActivities = trip.days.flatMap(day => day.activities).filter(a => a.showOnMap !== false);
 
     allActivities.forEach(activity => {
       const marker = new google.maps.Marker({
@@ -197,10 +197,11 @@ export default function TripMap(props: MapProps = {}) {
     const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
     trip.days.forEach((day, index) => {
-      if (day.activities.length < 2) return;
+      const visibleActivities = day.activities.filter(a => a.showOnMap !== false);
+      if (visibleActivities.length < 2) return;
 
       const polyline = new google.maps.Polyline({
-        path: day.activities.map(a => a.coordinates),
+        path: visibleActivities.map(a => a.coordinates),
         geodesic: true,
         strokeColor: dayColors[index % dayColors.length],
         strokeOpacity: 0.7,
@@ -219,7 +220,7 @@ export default function TripMap(props: MapProps = {}) {
     drivingPolylinesRef.current.forEach(p => p.setMap(null));
     drivingPolylinesRef.current = [];
 
-    const allActivities = trip.days.flatMap(d => d.activities);
+    const allActivities = trip.days.flatMap(d => d.activities).filter(a => a.showOnMap !== false);
     const drivingActivities = allActivities.filter(a => a.type === 'driving') as DrivingActivity[];
 
     drivingActivities.forEach(drive => {
