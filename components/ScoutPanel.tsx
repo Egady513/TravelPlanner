@@ -131,7 +131,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
       )}
 
       {/* Drawer */}
-      <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full invisible'}`}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-orange-50">
           <div className="flex items-center gap-2">
