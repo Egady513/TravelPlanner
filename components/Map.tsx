@@ -90,11 +90,13 @@ export default function TripMap(props: MapProps = {}) {
   // Markers
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
 
-  // Polylines for routes
-  const polylinesRef = useRef<google.maps.Polyline[]>([]);
-
   // Dashed polylines for driving activity start→end segments
   const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
+
+  // Real-road route renderers (replace straight-line polylinesRef)
+  const directionsRenderersRef = useRef<google.maps.DirectionsRenderer[]>([]);
+  // Cache keyed by "lat,lng|lat,lng|..." to avoid duplicate API calls
+  const directionsCache = useRef<Map<string, google.maps.DirectionsResult>>(new Map());
 
   // Drive time cache and InfoWindow for hover tooltips
   const driveTimeCache = useRef<Map<string, string>>(new Map());
@@ -224,12 +226,13 @@ export default function TripMap(props: MapProps = {}) {
     }
   }, [map, trip, showActivities, showDriving, showLodging, selectedDays]);
 
-  // Draw routes between activities in each day
+  // Draw real-road routes between activities in each day
   useEffect(() => {
     if (!map || !trip) return;
 
-    polylinesRef.current.forEach(polyline => polyline.setMap(null));
-    polylinesRef.current = [];
+    // Clear previous renderers
+    directionsRenderersRef.current.forEach(r => r.setMap(null));
+    directionsRenderersRef.current = [];
 
     const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
@@ -239,18 +242,62 @@ export default function TripMap(props: MapProps = {}) {
       const visibleActivities = day.activities.filter(a => a.showOnMap !== false);
       if (visibleActivities.length < 2) return;
 
-      const polyline = new google.maps.Polyline({
-        path: visibleActivities.map(a => a.coordinates),
-        geodesic: true,
-        strokeColor: dayColors[index % dayColors.length],
-        strokeOpacity: 0.7,
-        strokeWeight: 3,
-        map,
-      });
+      const waypoints = visibleActivities.slice(1, -1).map(a => ({
+        location: new google.maps.LatLng(a.coordinates.lat, a.coordinates.lng),
+        stopover: false,
+      }));
 
-      polylinesRef.current.push(polyline);
+      const origin = new google.maps.LatLng(
+        visibleActivities[0].coordinates.lat,
+        visibleActivities[0].coordinates.lng
+      );
+      const destination = new google.maps.LatLng(
+        visibleActivities[visibleActivities.length - 1].coordinates.lat,
+        visibleActivities[visibleActivities.length - 1].coordinates.lng
+      );
+
+      const cacheKey = visibleActivities.map(a => `${a.coordinates.lat},${a.coordinates.lng}`).join('|');
+
+      const color = dayColors[index % dayColors.length];
+
+      const render = (result: google.maps.DirectionsResult) => {
+        const renderer = new google.maps.DirectionsRenderer({
+          map,
+          directions: result,
+          suppressMarkers: true,
+          polylineOptions: {
+            strokeColor: color,
+            strokeOpacity: 0.7,
+            strokeWeight: 3,
+          },
+        });
+        directionsRenderersRef.current.push(renderer);
+      };
+
+      if (directionsCache.current.has(cacheKey)) {
+        render(directionsCache.current.get(cacheKey)!);
+        return;
+      }
+
+      const service = new google.maps.DirectionsService();
+      service.route(
+        {
+          origin,
+          destination,
+          waypoints,
+          travelMode: google.maps.TravelMode.DRIVING,
+          optimizeWaypoints: false,
+        },
+        (result, status) => {
+          if (status === 'OK' && result) {
+            directionsCache.current.set(cacheKey, result);
+            render(result);
+          }
+          // On failure, silently fall back — markers still show locations
+        }
+      );
     });
-  }, [map, trip, selectedDays]);
+  }, [map, trip, showActivities, showDriving, showLodging, selectedDays]);
 
   // Dashed polylines for driving activity start→end
   useEffect(() => {
