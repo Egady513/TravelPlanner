@@ -1,7 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { useTrip } from '@/lib/store';
+import type { RouteChangePayload } from '@/lib/store';
+import { loadScoutMessages } from '@/lib/supabase';
+import RouteChangeModal from './RouteChangeModal';
 
 interface ScoutPanelProps {
   isOpen: boolean;
@@ -13,6 +16,9 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [pendingSuggestion, setPendingSuggestion] = useState<RouteChangePayload | null>(null);
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const historyLoaded = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -25,6 +31,19 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
       abortRef.current?.abort();
     };
   }, []);
+
+  // Load chat history from Supabase when panel opens (once per session)
+  useEffect(() => {
+    if (!isOpen || historyLoaded.current || !trip?.id) return;
+    loadScoutMessages(trip.id)
+      .then(rows => {
+        if (rows.length > 0) {
+          setMessages(rows.map(r => ({ role: r.role as 'user' | 'assistant', content: r.content })));
+        }
+        historyLoaded.current = true;
+      })
+      .catch(() => { historyLoaded.current = true; }); // non-fatal
+  }, [isOpen, trip?.id]);
 
   const sendMessage = async () => {
     if (!inputValue.trim() || isStreaming) return;
@@ -42,7 +61,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
       const response = await fetch('/api/scout/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: outgoingMessages, tripContext: trip }),
+        body: JSON.stringify({ messages: outgoingMessages, tripContext: trip, tripId: trip?.id }),
         signal: controller.signal,
       });
 
@@ -68,7 +87,11 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
             const data = line.slice(6);
             if (data === '[DONE]') break;
             try {
-              const parsed = JSON.parse(data) as { text?: string; error?: string };
+              const parsed = JSON.parse(data) as { text?: string; error?: string; type?: string; payload?: RouteChangePayload };
+              if (parsed.type === 'route_suggestion' && parsed.payload) {
+                setPendingSuggestion(parsed.payload);
+                continue;
+              }
               const chunk = parsed.text ?? parsed.error ?? '';
               if (chunk) {
                 setMessages(prev => {
@@ -138,6 +161,24 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Route Suggestion Card */}
+        {pendingSuggestion && !showRouteModal && (
+          <div className="mx-3 mb-2 border border-orange-200 rounded-lg bg-orange-50 p-3">
+            <p className="text-xs font-semibold text-orange-800 mb-1">🗺️ Route Change Available</p>
+            <p className="text-xs text-orange-700 mb-2">{pendingSuggestion.description}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowRouteModal(true)}
+                className="flex-1 bg-orange-500 text-white text-xs py-1.5 rounded-md hover:bg-orange-600">
+                Preview Change
+              </button>
+              <button onClick={() => setPendingSuggestion(null)}
+                className="flex-1 bg-white text-gray-600 text-xs py-1.5 rounded-md border border-gray-300 hover:bg-gray-50">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Input */}
         <div className="border-t p-3">
           <div className="flex gap-2">
@@ -161,6 +202,15 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
           <p className="text-center text-xs text-gray-400 mt-2">Powered by Claude</p>
         </div>
       </div>
+
+      {/* RouteChangeModal rendered outside drawer */}
+      {showRouteModal && pendingSuggestion && (
+        <RouteChangeModal
+          payload={pendingSuggestion}
+          onAccept={() => { setShowRouteModal(false); setPendingSuggestion(null); }}
+          onDismiss={() => setShowRouteModal(false)}
+        />
+      )}
     </>
   );
 }
