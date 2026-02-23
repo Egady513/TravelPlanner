@@ -36,8 +36,9 @@ interface ImportItineraryProps {
 export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProps) {
   const { setTrip } = useTrip();
   const [text, setText] = useState('');
-  const [step, setStep] = useState<'input' | 'parsing' | 'preview' | 'geocoding'>('input');
+  const [step, setStep] = useState<'input' | 'parsing' | 'preview' | 'geocoding' | 'confirm'>('input');
   const [parsed, setParsed] = useState<ImportResponse | null>(null);
+  const [parsedTrip, setParsedTrip] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -117,13 +118,14 @@ export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProp
       mustHaves: [],
     };
 
-    setTrip(newTrip);
-    onClose();
+    setParsedTrip(newTrip);
+    setStep('confirm');
   };
 
   const handleBack = () => {
     setStep('input');
     setParsed(null);
+    setParsedTrip(null);
     setError(null);
   };
 
@@ -235,6 +237,40 @@ export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProp
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-gray-600 font-medium">Geocoding activities...</p>
+            </div>
+          )}
+          {/* Confirmation step */}
+          {step === 'confirm' && parsedTrip && (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="font-semibold text-green-800 mb-2">Found your trip!</p>
+                <p className="text-sm text-green-700">{parsedTrip.name}</p>
+                <p className="text-sm text-green-600">
+                  {parsedTrip.days.length} days &middot; {parsedTrip.days.flatMap(d => d.activities).length} activities
+                </p>
+              </div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {parsedTrip.days.map(day => (
+                  <div key={day.dayNumber} className="text-xs text-gray-600 flex items-start gap-2">
+                    <span className="font-medium text-gray-800 w-12 flex-shrink-0">Day {day.dayNumber}</span>
+                    <span>{day.activities.map(a => a.name).join(', ') || 'No activities'}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setTrip(parsedTrip); onClose(); }}
+                  className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-orange-600"
+                >
+                  Use This Trip
+                </button>
+                <button
+                  onClick={() => { setStep('input'); setParsedTrip(null); setParsed(null); }}
+                  className="flex-1 bg-white text-gray-700 py-2 rounded-lg text-sm border border-gray-300 hover:bg-gray-50"
+                >
+                  Try Again
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -11,12 +11,12 @@ import { parseLocalDate } from '@/lib/dateUtils';
 import ImportItinerary from "@/components/ImportItinerary";
 import TopNav from "@/components/TopNav";
 import ScoutPanel from "@/components/ScoutPanel";
+import DashboardModal from "@/components/DashboardModal";
 
 export default function Home() {
   const { trip, setTrip } = useTrip();
   const [showWizard, setShowWizard] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by DashboardModal in V2-F1
   const [showDashboard, setShowDashboard] = useState(false);
   const [showScout, setShowScout] = useState(false);
 
@@ -86,6 +86,7 @@ export default function Home() {
         </main>
         <ImportItinerary isOpen={showImport} onClose={() => setShowImport(false)} />
         <ScoutPanel isOpen={showScout} onClose={() => setShowScout(false)} />
+        {showDashboard && <DashboardModal onClose={() => setShowDashboard(false)} />}
       </div>
     );
   }
