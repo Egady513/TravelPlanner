@@ -292,8 +292,9 @@ export default function TripMap(props: MapProps = {}) {
           if (status === 'OK' && result) {
             directionsCache.current.set(cacheKey, result);
             render(result);
+          } else {
+            console.error(`[DirectionsService] status=${status} for day ${day.dayNumber}. If REQUEST_DENIED, enable the Directions API at https://console.cloud.google.com/apis/library/directions-backend.googleapis.com`);
           }
-          // On failure, silently fall back — markers still show locations
         }
       );
     });
@@ -315,55 +316,76 @@ export default function TripMap(props: MapProps = {}) {
     const drivingActivities = allActivities as DrivingActivity[];
 
     drivingActivities.forEach(drive => {
-      const polyline = new google.maps.Polyline({
-        path: [drive.startLocation.coordinates, drive.endLocation.coordinates],
-        geodesic: true,
-        strokeColor: '#6b7280',
-        strokeOpacity: 0,
-        strokeWeight: 0,
-        icons: [{
-          icon: {
-            path: 'M 0,-1 0,1',
-            strokeOpacity: 1,
-            scale: 3,
+      const cacheKey = `drive|${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}→${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
+
+      const attachHover = (polyline: google.maps.Polyline) => {
+        polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
+          if (driveTimeCache.current.has(cacheKey)) {
+            showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(cacheKey)!);
+            return;
+          }
+          const service = new google.maps.DistanceMatrixService();
+          service.getDistanceMatrix({
+            origins: [drive.startLocation.coordinates],
+            destinations: [drive.endLocation.coordinates],
+            travelMode: google.maps.TravelMode.DRIVING,
+            unitSystem: google.maps.UnitSystem.IMPERIAL,
+          }, (result, status) => {
+            if (status === 'OK' && result) {
+              const element = result.rows[0]?.elements[0];
+              if (element?.status === 'OK') {
+                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}`;
+                driveTimeCache.current.set(cacheKey, label);
+                showDriveTimeTooltip(e.latLng, label);
+              }
+            }
+          });
+        });
+        polyline.addListener('mouseout', () => {
+          driveTimeInfoWindow.current?.close();
+        });
+      };
+
+      const makeDashedPolyline = (path: google.maps.LatLng[] | google.maps.MVCArray<google.maps.LatLng>) => {
+        const polyline = new google.maps.Polyline({
+          path,
+          geodesic: false,
+          strokeColor: '#6b7280',
+          strokeOpacity: 0,
+          strokeWeight: 0,
+          icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '20px' }],
+          map,
+        });
+        drivingPolylinesRef.current.push(polyline);
+        attachHover(polyline);
+      };
+
+      // Use cached route if available
+      if (directionsCache.current.has(cacheKey)) {
+        makeDashedPolyline(directionsCache.current.get(cacheKey)!.routes[0].overview_path);
+      } else {
+        // Fetch real road path, fall back to straight line on failure
+        const dirService = new google.maps.DirectionsService();
+        dirService.route(
+          {
+            origin: drive.startLocation.coordinates,
+            destination: drive.endLocation.coordinates,
+            travelMode: google.maps.TravelMode.DRIVING,
           },
-          offset: '0',
-          repeat: '20px',
-        }],
-        map,
-      });
-      drivingPolylinesRef.current.push(polyline);
-
-      const cacheKey = `${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}→${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
-
-      polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
-        // Check cache first
-        if (driveTimeCache.current.has(cacheKey)) {
-          showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(cacheKey)!);
-          return;
-        }
-
-        const service = new google.maps.DistanceMatrixService();
-        service.getDistanceMatrix({
-          origins: [drive.startLocation.coordinates],
-          destinations: [drive.endLocation.coordinates],
-          travelMode: google.maps.TravelMode.DRIVING,
-          unitSystem: google.maps.UnitSystem.IMPERIAL,
-        }, (result, status) => {
-          if (status === 'OK' && result) {
-            const element = result.rows[0]?.elements[0];
-            if (element?.status === 'OK') {
-              const label = `🚗 ${element.duration?.text} · ${element.distance?.text}`;
-              driveTimeCache.current.set(cacheKey, label);
-              showDriveTimeTooltip(e.latLng, label);
+          (result, status) => {
+            if (status === 'OK' && result) {
+              directionsCache.current.set(cacheKey, result);
+              makeDashedPolyline(result.routes[0].overview_path);
+            } else {
+              // Fallback: straight dashed line
+              makeDashedPolyline([
+                new google.maps.LatLng(drive.startLocation.coordinates.lat, drive.startLocation.coordinates.lng),
+                new google.maps.LatLng(drive.endLocation.coordinates.lat, drive.endLocation.coordinates.lng),
+              ]);
             }
           }
-        });
-      });
-
-      polyline.addListener('mouseout', () => {
-        driveTimeInfoWindow.current?.close();
-      });
+        );
+      }
     });
   }, [map, trip, showDriving, selectedDays, showDriveTimeTooltip]);
 
