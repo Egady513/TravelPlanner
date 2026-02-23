@@ -29,11 +29,13 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
   const { removeActivity, reorderActivities, updateActivity } = useTrip();
   const dogStatus = getDogStatus(day.activities);
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: Date | string) => {
     if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'long', month: 'long', day: 'numeric',
-    }).format(date);
+    }).format(d);
   };
 
   const handleDragEnd = (result: DropResult) => {

@@ -49,13 +49,15 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
     });
   }, [day.dayNumber, day.date, day.activities.length, day.weather, setDayWeather]);
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: Date | string) => {
     if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
-    }).format(date);
+    }).format(d);
   };
 
   return (
