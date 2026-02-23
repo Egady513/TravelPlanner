@@ -261,14 +261,20 @@ export default function TripMap(props: MapProps = {}) {
       const color = dayColors[index % dayColors.length];
 
       const render = (result: google.maps.DirectionsResult) => {
+        // Dashed day-color line — subordinate to the driving route spine
         const renderer = new google.maps.DirectionsRenderer({
           map,
           directions: result,
           suppressMarkers: true,
           polylineOptions: {
             strokeColor: color,
-            strokeOpacity: 0.7,
-            strokeWeight: 3,
+            strokeOpacity: 0,
+            strokeWeight: 0,
+            icons: [{
+              icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.65, scale: 2.5, strokeColor: color },
+              offset: '0',
+              repeat: '14px',
+            }],
           },
         });
         directionsRenderersRef.current.push(renderer);
@@ -347,14 +353,27 @@ export default function TripMap(props: MapProps = {}) {
       };
 
       const makeDashedPolyline = (path: google.maps.LatLng[] | google.maps.MVCArray<google.maps.LatLng>) => {
+        // White halo underneath — gives the "nav app" premium feel
+        const halo = new google.maps.Polyline({
+          path,
+          geodesic: false,
+          strokeColor: '#ffffff',
+          strokeOpacity: 0.9,
+          strokeWeight: 9,
+          map,
+          zIndex: 1,
+        });
+        drivingPolylinesRef.current.push(halo);
+
+        // Solid orange driving route on top — the spine of the trip
         const polyline = new google.maps.Polyline({
           path,
           geodesic: false,
-          strokeColor: '#6b7280',
-          strokeOpacity: 0,
-          strokeWeight: 0,
-          icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '20px' }],
+          strokeColor: '#ea580c',
+          strokeOpacity: 1,
+          strokeWeight: 5,
           map,
+          zIndex: 2,
         });
         drivingPolylinesRef.current.push(polyline);
         attachHover(polyline);
