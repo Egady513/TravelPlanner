@@ -12,7 +12,7 @@ interface AddActivityFormProps {
 }
 
 export default function AddActivityForm({ coordinates, onClose }: AddActivityFormProps) {
-  const { addActivity, selectedDay } = useTrip();
+  const { addActivity, selectedDay, trip } = useTrip();
   const [name, setName] = useState('');
   const [type, setType] = useState<ActivityType>('trail');
   const [isDogFriendly, setIsDogFriendly] = useState(true);
@@ -76,6 +76,31 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
       setParsedCoords(coordinates ?? null);
     }
   }, [coordinateInput, coordinates]);
+
+  // Auto-fill driving start from previous day's endpoint
+  useEffect(() => {
+    if (type !== 'driving' || !trip || currentDayNumber <= 1 || driveStart) return;
+
+    const prevDay = trip.days.find(d => d.dayNumber === currentDayNumber - 1);
+    if (!prevDay) return;
+
+    // Priority 1: last driving activity's endLocation on the previous day
+    const prevDrives = prevDay.activities.filter(a => a.type === 'driving') as DrivingActivity[];
+    if (prevDrives.length > 0) {
+      const end = prevDrives[prevDrives.length - 1].endLocation;
+      setDriveStart(end);
+      setDriveStartInput(end.name);
+      return;
+    }
+
+    // Priority 2: hotel or camping lodging on previous day
+    const prevLodging = prevDay.activities.find(a => a.type === 'hotel' || a.type === 'camping');
+    if (prevLodging) {
+      const loc = { name: prevLodging.name, coordinates: prevLodging.coordinates };
+      setDriveStart(loc);
+      setDriveStartInput(prevLodging.name);
+    }
+  }, [type]);
 
   const handlePlaceSelected = (result: { name: string; coordinates: { lat: number; lng: number } }) => {
     setName(result.name);
