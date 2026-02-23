@@ -42,6 +42,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
 
   // Hotel/camping pricing
   const [pricePerNight, setPricePerNight] = useState<number | undefined>(undefined);
+  const [nights, setNights] = useState<number>(1);
 
   // Ticket tracking (trail, park, restaurant)
   const [requiresTickets, setRequiresTickets] = useState(false);
@@ -207,12 +208,14 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         sourceLink: sourceLink.trim() || undefined,
         amenities,
         pricePerNight,
+        nights: nights > 1 ? nights : undefined,
       } as CampingSpot;
     } else if (type === 'hotel') {
       activity = {
         ...baseActivity,
         type: 'hotel',
         pricePerNight,
+        nights: nights > 1 ? nights : undefined,
       } as Activity;
     } else if (type === 'trail' || type === 'park' || type === 'restaurant') {
       activity = {
@@ -346,21 +349,37 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
           </div>
         )}
 
-        {/* Hotel: Price per night */}
+        {/* Hotel: Price per night + nights */}
         {type === 'hotel' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Price per night ($)
-            </label>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={pricePerNight ?? ''}
-              onChange={(e) => setPricePerNight(e.target.value === '' ? undefined : Number(e.target.value))}
-              placeholder="e.g., 120"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price per night ($)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={pricePerNight ?? ''}
+                onChange={(e) => setPricePerNight(e.target.value === '' ? undefined : Number(e.target.value))}
+                placeholder="e.g., 120"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nights
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                step={1}
+                value={nights}
+                onChange={(e) => setNights(Math.max(1, Number(e.target.value)))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         )}
 
@@ -393,19 +412,35 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         {/* Camping-Specific Fields */}
         {type === 'camping' && (
           <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price per night ($)
-              </label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={pricePerNight ?? ''}
-                onChange={(e) => setPricePerNight(e.target.value === '' ? undefined : Number(e.target.value))}
-                placeholder="e.g., 25"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price per night ($)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={pricePerNight ?? ''}
+                  onChange={(e) => setPricePerNight(e.target.value === '' ? undefined : Number(e.target.value))}
+                  placeholder="e.g., 25"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nights
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  step={1}
+                  value={nights}
+                  onChange={(e) => setNights(Math.max(1, Number(e.target.value)))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div>

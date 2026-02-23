@@ -20,15 +20,19 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
 
   const totalDays = trip.days.length;
   const drivingDays = trip.days.filter(d => d.activities.some(a => a.type === 'driving')).length;
-  const campingNights = trip.days.filter(d => d.lodging === 'camping').length;
-  const hotelNights = trip.days.filter(d => d.lodging === 'hotel').length;
+  const campingNights = trip.days.flatMap(d => d.activities)
+    .filter(a => a.type === 'camping')
+    .reduce((sum, a) => sum + ((a as { nights?: number }).nights ?? 1), 0);
+  const hotelNights = trip.days.flatMap(d => d.activities)
+    .filter(a => a.type === 'hotel')
+    .reduce((sum, a) => sum + ((a as { nights?: number }).nights ?? 1), 0);
   const dogFriendlyDays = trip.days.filter(d => d.activities.every(a => a.isDogFriendly !== false)).length;
 
   const lodgingCost = trip.days.flatMap(d => d.activities)
     .filter(a => a.type === 'hotel' || a.type === 'camping')
     .reduce((sum, a) => {
-      const price = (a as { pricePerNight?: number }).pricePerNight;
-      return sum + (price ?? 0);
+      const act = a as { pricePerNight?: number; nights?: number };
+      return sum + (act.pricePerNight ?? 0) * (act.nights ?? 1);
     }, 0);
 
   const ticketActivities = trip.days.flatMap(d =>

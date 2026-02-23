@@ -35,6 +35,21 @@ function aggregateLevel(messages: ValidationMessage[]): ValidationLevel {
   return 'success';
 }
 
+/** Haversine distance in miles between two coordinates. */
+function haversineDistanceMiles(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+): number {
+  const R = 3958.8;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const h = sinDLat * sinDLat + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinDLng * sinDLng;
+  return R * 2 * Math.asin(Math.sqrt(h));
+}
+
 /** Count consecutive camping nights immediately before the given day. */
 function campingStreakBefore(day: Day, allDays: Day[]): number {
   const sorted = [...allDays].sort((a, b) => a.dayNumber - b.dayNumber);
@@ -159,6 +174,24 @@ export function validateDay(
       message: `${day.activities.length} activities planned — a lot for a relaxed pace`,
       suggestion: 'Consider moving some activities to adjacent days',
     });
+  }
+
+  // Rule 8: geographically impossible same-day activities (non-driving, >150 miles apart)
+  const geoActivities = day.activities.filter(a => a.type !== 'driving');
+  for (let i = 0; i < geoActivities.length; i++) {
+    for (let j = i + 1; j < geoActivities.length; j++) {
+      const dist = haversineDistanceMiles(
+        geoActivities[i].coordinates,
+        geoActivities[j].coordinates
+      );
+      if (dist > 150) {
+        messages.push({
+          level: 'warning',
+          message: `"${geoActivities[i].name}" and "${geoActivities[j].name}" are ~${Math.round(dist)} miles apart`,
+          suggestion: 'These may not be feasible in one day — consider splitting across days',
+        });
+      }
+    }
   }
 
   if (messages.length === 0) {

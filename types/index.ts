@@ -42,6 +42,7 @@ export interface Hotel extends Activity {
   phone?: string;
   confirmationNumber?: string;
   pricePerNight?: number;
+  nights?: number;
 }
 
 export interface Restaurant extends Activity {
@@ -61,6 +62,7 @@ export interface CampingSpot extends Activity {
     water: boolean;
   };
   pricePerNight?: number;
+  nights?: number;
 }
 
 export interface Park extends Activity {
