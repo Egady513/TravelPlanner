@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,16 +13,7 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [tips, setTips] = useState<Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }>>([]);
-  const [dismissedTipIds, setDismissedTipIds] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set<string>();
-    try {
-      const saved = localStorage.getItem('scout-dismissed-tips');
-      return saved ? new Set<string>(JSON.parse(saved) as string[]) : new Set<string>();
-    } catch {
-      return new Set<string>();
-    }
-  });
+  const [scoutTips, setScoutTips] = useState<Array<{ id: string; tip_key: string; message: string; type: 'warning' | 'info' | 'suggestion'; dismissed: boolean }>>([]);
   useEffect(() => {
     if (!trip) return;
     const timer = setTimeout(async () => {
@@ -30,10 +21,12 @@ export default function Sidebar() {
         const res = await fetch('/api/scout/tips', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trip }),
+          body: JSON.stringify({ trip, tripId: trip.id }),
         });
         const data = await res.json() as { tips?: Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }> };
-        if (data.tips && data.tips.length > 0) { setTips(data.tips); }
+        if (data.tips && data.tips.length > 0) {
+          setScoutTips(data.tips.map(t => ({ ...t, tip_key: t.id, dismissed: false })));
+        }
       } catch {
         // Silent fail
       }
@@ -41,15 +34,14 @@ export default function Sidebar() {
     return () => clearTimeout(timer);
   }, [trip]);
 
-  const handleDismissTip = (id: string) => {
-    setDismissedTipIds(prev => {
-      const next = new Set([...Array.from(prev), id]);
-      try { localStorage.setItem('scout-dismissed-tips', JSON.stringify(Array.from(next))); } catch { /* ignore */ }
-      return next;
-    });
+  const handleDismissTip = async (tipKey: string) => {
+    setScoutTips(prev => prev.map(t => t.tip_key === tipKey ? { ...t, dismissed: true } : t));
+    try {
+      await fetch(`/api/scout/tips/${encodeURIComponent(tipKey)}/dismiss`, { method: 'PATCH' });
+    } catch { /* non-fatal */ }
   };
 
-  const visibleTips = tips.filter(t => !dismissedTipIds.has(t.id));
+  const visibleTips = scoutTips.filter(t => !t.dismissed);
 
   if (!trip) return null;
 
@@ -100,8 +92,8 @@ export default function Sidebar() {
                   </p>
                   {visibleTips.map(tip => (
                     <ScoutTip
-                      key={tip.id}
-                      id={tip.id}
+                      key={tip.tip_key}
+                      id={tip.tip_key}
                       message={tip.message}
                       type={tip.type}
                       onDismiss={handleDismissTip}
