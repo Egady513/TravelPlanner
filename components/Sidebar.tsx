@@ -88,7 +88,7 @@ export default function Sidebar() {
               {visibleTips.length > 0 && (
                 <div className="px-3 pt-3 space-y-2">
                   <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                    <span>ðŸ•</span> Scout Tips
+                    <span>🐕</span> Scout Tips
                   </p>
                   {visibleTips.map(tip => (
                     <ScoutTip

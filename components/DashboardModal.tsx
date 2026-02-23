@@ -24,6 +24,19 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
   const hotelNights = trip.days.filter(d => d.lodging === 'hotel').length;
   const dogFriendlyDays = trip.days.filter(d => d.activities.every(a => a.isDogFriendly !== false)).length;
 
+  const lodgingCost = trip.days.flatMap(d => d.activities)
+    .filter(a => a.type === 'hotel' || a.type === 'camping')
+    .reduce((sum, a) => {
+      const price = (a as { pricePerNight?: number }).pricePerNight;
+      return sum + (price ?? 0);
+    }, 0);
+
+  const ticketActivities = trip.days.flatMap(d =>
+    d.activities
+      .filter(a => a.requiresTickets === true)
+      .map(a => ({ activity: a, dayNumber: d.dayNumber }))
+  );
+
   const validationErrors = trip.days.flatMap(d => d.validationStatus.messages.filter(m => m.level === 'error'));
   const validationWarnings = trip.days.flatMap(d => d.validationStatus.messages.filter(m => m.level === 'warning'));
 
@@ -99,6 +112,12 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
               <div className="space-y-1 text-sm text-gray-600">
                 <div className="flex justify-between"><span>Hotel nights</span><span className="font-medium">{hotelNights}</span></div>
                 <div className="flex justify-between"><span>Camping nights</span><span className="font-medium">{campingNights}</span></div>
+                {lodgingCost > 0 && (
+                  <div className="flex justify-between pt-1 border-t border-gray-100 mt-1">
+                    <span>Est. lodging</span>
+                    <span className="font-medium text-gray-900">${lodgingCost.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             </div>
             {trip.hasDog && (
@@ -110,6 +129,23 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
               </div>
             )}
           </div>
+
+          {/* Tickets summary */}
+          {ticketActivities.length > 0 && (
+            <div className="border rounded-lg p-3">
+              <p className="text-sm font-semibold text-gray-700 mb-2">🎟️ Tickets</p>
+              <div className="space-y-1">
+                {ticketActivities.map(({ activity, dayNumber }) => (
+                  <div key={activity.id} className="flex items-center justify-between text-sm text-gray-600">
+                    <span className="truncate mr-2">{activity.name} <span className="text-xs text-gray-400">(Day {dayNumber})</span></span>
+                    <span className={`flex-shrink-0 font-medium ${activity.ticketsPurchased ? 'text-green-600' : 'text-red-500'}`}>
+                      {activity.ticketsPurchased ? '✓' : '✗'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Validation summary */}
           {(validationErrors.length > 0 || validationWarnings.length > 0) && (

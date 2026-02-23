@@ -27,6 +27,9 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
   const [driveEndInput, setDriveEndInput] = useState('');
   const [driveStart, setDriveStart] = useState<{ name: string; coordinates: Coordinates } | null>(null);
   const [driveEnd, setDriveEnd] = useState<{ name: string; coordinates: Coordinates } | null>(null);
+  const [estimatedDriveHours, setEstimatedDriveHours] = useState<number | null>(null);
+  const [estimatedDriveDistance, setEstimatedDriveDistance] = useState<string>('');
+  const [isEstimatingDriveTime, setIsEstimatingDriveTime] = useState(false);
 
   // Camping-specific fields
   const [sourceLink, setSourceLink] = useState('');
@@ -36,6 +39,13 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
     cellCoverage: false,
     water: false,
   });
+
+  // Hotel/camping pricing
+  const [pricePerNight, setPricePerNight] = useState<number | undefined>(undefined);
+
+  // Ticket tracking (trail, park, restaurant)
+  const [requiresTickets, setRequiresTickets] = useState(false);
+  const [ticketsPurchased, setTicketsPurchased] = useState(false);
 
   const currentDayNumber = selectedDay || 1;
 
@@ -102,6 +112,40 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
     }
   }, [type]);
 
+  // Estimate drive time when both endpoints are set
+  useEffect(() => {
+    if (!driveStart || !driveEnd) return;
+
+    const service = window.google?.maps?.DistanceMatrixService
+      ? new window.google.maps.DistanceMatrixService()
+      : null;
+    if (!service) return;
+
+    setIsEstimatingDriveTime(true);
+    setEstimatedDriveHours(null);
+    setEstimatedDriveDistance('');
+
+    service.getDistanceMatrix(
+      {
+        origins: [driveStart.coordinates],
+        destinations: [driveEnd.coordinates],
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        unitSystem: window.google.maps.UnitSystem.IMPERIAL,
+      },
+      (result: google.maps.DistanceMatrixResponse | null, status: google.maps.DistanceMatrixStatus) => {
+        if (status === 'OK' && result) {
+          const el = result.rows[0]?.elements[0];
+          if (el?.status === 'OK') {
+            const hours = Math.round((el.duration.value / 3600) * 10) / 10;
+            setEstimatedDriveHours(hours);
+            setEstimatedDriveDistance(el.distance?.text ?? '');
+          }
+        }
+        setIsEstimatingDriveTime(false);
+      }
+    );
+  }, [driveStart, driveEnd]);
+
   const handlePlaceSelected = (result: { name: string; coordinates: { lat: number; lng: number } }) => {
     setName(result.name);
     setParsedCoords(result.coordinates);
@@ -132,6 +176,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         notes: notes.trim() || undefined,
         startLocation: driveStart,
         endLocation: driveEnd,
+        estimatedDriveHours: estimatedDriveHours ?? undefined,
       } as DrivingActivity;
       addActivity(activity);
       onClose();
@@ -161,7 +206,20 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         type: 'camping',
         sourceLink: sourceLink.trim() || undefined,
         amenities,
+        pricePerNight,
       } as CampingSpot;
+    } else if (type === 'hotel') {
+      activity = {
+        ...baseActivity,
+        type: 'hotel',
+        pricePerNight,
+      } as Activity;
+    } else if (type === 'trail' || type === 'park' || type === 'restaurant') {
+      activity = {
+        ...baseActivity,
+        requiresTickets,
+        ticketsPurchased: requiresTickets ? ticketsPurchased : undefined,
+      } as Activity;
     } else {
       activity = baseActivity as Activity;
     }
@@ -271,12 +329,38 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {driveEnd && <p className="text-xs text-green-600 mt-1">✓ {driveEnd.coordinates.lat.toFixed(4)}, {driveEnd.coordinates.lng.toFixed(4)}</p>}
+              {isEstimatingDriveTime && (
+                <p className="text-xs text-gray-500 mt-1">Estimating drive time…</p>
+              )}
+              {!isEstimatingDriveTime && estimatedDriveHours !== null && (
+                <p className="text-xs text-blue-700 bg-blue-50 px-3 py-2 rounded mt-1">
+                  🚗 ~{estimatedDriveHours}h{estimatedDriveDistance ? ` · ${estimatedDriveDistance}` : ''}
+                </p>
+              )}
             </div>
             {driveStart && driveEnd && (
               <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded">
                 🚗 Drive: {driveStartInput} → {driveEndInput}
               </p>
             )}
+          </div>
+        )}
+
+        {/* Hotel: Price per night */}
+        {type === 'hotel' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Price per night ($)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={pricePerNight ?? ''}
+              onChange={(e) => setPricePerNight(e.target.value === '' ? undefined : Number(e.target.value))}
+              placeholder="e.g., 120"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         )}
 
@@ -309,6 +393,21 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         {/* Camping-Specific Fields */}
         {type === 'camping' && (
           <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price per night ($)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={pricePerNight ?? ''}
+                onChange={(e) => setPricePerNight(e.target.value === '' ? undefined : Number(e.target.value))}
+                placeholder="e.g., 25"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Source Link (optional)
@@ -348,6 +447,37 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
               </div>
             </div>
           </>
+        )}
+
+        {/* Ticket tracking (trail, park, restaurant) */}
+        {(type === 'trail' || type === 'park' || type === 'restaurant') && (
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={requiresTickets}
+                onChange={(e) => {
+                  setRequiresTickets(e.target.checked);
+                  if (!e.target.checked) setTicketsPurchased(false);
+                }}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">
+                Requires tickets/reservation?
+              </span>
+            </label>
+            {requiresTickets && (
+              <label className="flex items-center ml-4">
+                <input
+                  type="checkbox"
+                  checked={ticketsPurchased}
+                  onChange={(e) => setTicketsPurchased(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Already purchased?</span>
+              </label>
+            )}
+          </div>
         )}
 
         {/* Dog Friendly */}

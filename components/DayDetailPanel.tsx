@@ -118,7 +118,26 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">{activity.name}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-gray-900 text-sm truncate">{activity.name}</p>
+                            {activity.requiresTickets === true && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateActivity(activity.id, { ticketsPurchased: !activity.ticketsPurchased });
+                                }}
+                                title={activity.ticketsPurchased ? 'Tickets purchased — click to toggle' : 'Tickets needed — click to mark purchased'}
+                                className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-medium cursor-pointer ${
+                                  activity.ticketsPurchased
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}
+                              >
+                                {activity.ticketsPurchased ? '🎟️ ✓' : '🎟️ Tickets needed'}
+                              </button>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-gray-500 capitalize">{activity.type}</span>
                             {activity.isDogFriendly ? (

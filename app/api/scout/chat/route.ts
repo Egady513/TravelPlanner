@@ -58,19 +58,36 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
         .join('\n')}`
     : '';
 
-  return `You are Scout, a friendly and knowledgeable road trip planning assistant. You have full context of the user's trip below. Be concise but helpful. Reference specific days, activities, and locations from their plan when relevant.
+  // Build a human-readable trip summary for Scout to reference
+  const tripSummary = trip.days.map(day => {
+    const drives = day.activities.filter(a => a.type === 'driving');
+    const driveInfo = drives.map(d => {
+      const drive = d as { startLocation?: { name: string }; endLocation?: { name: string }; estimatedDriveHours?: number };
+      const hrs = drive.estimatedDriveHours ? ` (~${drive.estimatedDriveHours}h)` : '';
+      return `${drive.startLocation?.name ?? '?'} → ${drive.endLocation?.name ?? '?'}${hrs}`;
+    }).join(', ');
+    const activities = day.activities.filter(a => a.type !== 'driving').map(a => a.name).join(', ');
+    return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}`;
+  }).join('\n');
 
-When you detect a drive that exceeds the user's maxDrivingHours preference, proactively use the suggest_route_change tool to offer a concrete split. Always explain your reasoning first in plain text, then call the tool.
+  return `You are Scout 🐾 — a warm, sharp road trip co-pilot. You talk like a knowledgeable friend who's done a lot of road trips, not a chatbot. Keep responses SHORT (2–4 sentences max unless listing items). Use plain language. Reference specific days, names, and locations from the plan. Use emoji sparingly — only where it adds clarity (🚗 for drives, ⚠️ for warnings, ✅ for good stuff).
 
-USER PREFERENCES (set during trip setup):
-- Max driving per day: ${trip.maxDrivingHours}h
-- Trip pace: ${trip.tripPace}
-- Traveling with dog: ${trip.hasDog}
-- Budget style: ${trip.budgetStyle}
-- Lodging preferences: ${trip.lodgingPreferences?.join(', ') || 'flexible'}
-- People: ${trip.peopleCount}
+RESPONSE STYLE:
+- Short, direct sentences. No walls of text.
+- Lead with the most important thing first.
+- If giving multiple points, use a brief bullet list (3 items max).
+- Never say "I'd be happy to" or "Great question!" — just answer.
+- When you notice a problem, name it clearly and offer to fix it.
 
-FULL TRIP ITINERARY (current state):
+ROUTE CHANGE RULE: If a drive in the plan exceeds ${trip.maxDrivingHours}h (the user's max), you MUST proactively call suggest_route_change to offer a concrete split — even if the user didn't ask. Write 1–2 sentences explaining why first, then call the tool.
+
+USER PREFERENCES:
+- Max driving/day: ${trip.maxDrivingHours}h | Pace: ${trip.tripPace} | Dog: ${trip.hasDog ? 'yes 🐕' : 'no'} | Budget: ${trip.budgetStyle} | Lodging: ${trip.lodgingPreferences?.join(', ') || 'flexible'} | People: ${trip.peopleCount}
+
+TRIP AT A GLANCE:
+${tripSummary}
+
+FULL TRIP DATA (for calculations):
 ${JSON.stringify(trip, null, 2)}
 ${removedSection}${actionsSection}${tipsSection}`;
 }

@@ -5,7 +5,19 @@ import { upsertScoutTips, loadScoutTips } from '@/lib/supabase';
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `You are Scout, a road trip planning assistant. Analyze the trip and provide 2-4 concise, actionable tips. Return ONLY a JSON array of tip objects: [{"id":"tip-1","message":"...","type":"warning|info|suggestion"}]. No markdown, no prose, just the JSON array.`;
+const SYSTEM_PROMPT = `You are Scout, a road trip planning assistant. Analyze the trip and return 2-4 concise, actionable tips as a JSON array.
+
+IMPORTANT checks to make:
+1. For each driving activity, estimate drive time from start/end coordinates if estimatedDriveHours is not set. Flag any day where driving likely exceeds maxDrivingHours.
+2. Check for days with no lodging (hotel or camping activity) — that's a planning gap.
+3. Flag consecutive camping nights 3+ before a strenuous day.
+4. Check dog-friendly conflicts if hasDog=true.
+
+Return ONLY a JSON array: [{"id":"tip-1","message":"...","type":"warning|info|suggestion"}]
+- type "warning" = something that needs fixing (long drive, missing lodging, dog conflict)
+- type "info" = useful heads-up
+- type "suggestion" = nice-to-have improvement
+Be specific: name the day number and activity. No markdown, no prose, just the JSON array.`;
 
 export async function POST(req: NextRequest) {
   try {

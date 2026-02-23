@@ -87,6 +87,9 @@ export default function TripMap(props: MapProps = {}) {
   // Day selector state — empty array means "All Days"
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
+  // Legend/filter panel collapsed state
+  const [legendOpen, setLegendOpen] = useState(true);
+
   // Markers
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
 
@@ -430,73 +433,101 @@ export default function TripMap(props: MapProps = {}) {
       <div className={`${className} relative`} style={{ visibility: (loading || error) ? 'hidden' : 'visible' }}>
         <div ref={mapRef} style={{ height: '100%' }} />
 
-        {/* Filter overlay panel — top-right corner */}
+        {/* Filter overlay panel — top-right corner, collapsible */}
         {trip && !loading && !error && (
-          <div className="absolute top-2 right-2 z-10 bg-white rounded-lg shadow-md p-3 text-sm min-w-[160px]">
-            <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Layers</p>
-
-            <label className="flex items-center gap-2 cursor-pointer mb-1">
-              <input
-                type="checkbox"
-                checked={showActivities}
-                onChange={e => setShowActivities(e.target.checked)}
-              />
-              <span>🏔️ Activities</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer mb-1">
-              <input
-                type="checkbox"
-                checked={showDriving}
-                onChange={e => setShowDriving(e.target.checked)}
-              />
-              <span>🚗 Driving</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer mb-2">
-              <input
-                type="checkbox"
-                checked={showLodging}
-                onChange={e => setShowLodging(e.target.checked)}
-              />
-              <span>🏨 Lodging</span>
-            </label>
-
-            <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide border-t pt-2">Days</p>
-
-            <div className="flex flex-wrap gap-1">
-              {/* All Days chip */}
-              <button
-                onClick={() => setSelectedDays([])}
-                className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
-                  selectedDays.length === 0
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
-                }`}
-              >
-                All
-              </button>
-
-              {/* Individual day chips */}
-              {trip.days.map(day => (
-                <button
-                  key={day.dayNumber}
-                  onClick={() => {
-                    setSelectedDays(prev =>
-                      prev.includes(day.dayNumber)
-                        ? prev.filter(d => d !== day.dayNumber)
-                        : [...prev, day.dayNumber]
-                    );
-                  }}
-                  className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
-                    selectedDays.includes(day.dayNumber)
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
-                  }`}
+          <div className="absolute top-2 right-0 z-10 flex items-start">
+            {/* Toggle tab — always visible on the left edge of the panel */}
+            <button
+              onClick={() => setLegendOpen(o => !o)}
+              className="bg-white rounded-l-lg shadow-md px-1.5 py-3 text-xs text-gray-600 hover:text-gray-900 border border-r-0 border-gray-200 flex flex-col items-center gap-1"
+              title={legendOpen ? 'Hide layers' : 'Show layers'}
+            >
+              <span className="text-gray-500">{legendOpen ? '▶' : '◀'}</span>
+              {!legendOpen && (
+                <span
+                  style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}
+                  className="text-xs text-gray-400 select-none"
                 >
-                  {day.dayNumber}
-                </button>
-              ))}
+                  Layers
+                </span>
+              )}
+            </button>
+
+            {/* Panel — slides in/out via width + opacity transition */}
+            <div
+              className={`bg-white rounded-l-lg shadow-md text-sm overflow-hidden transition-all duration-300 ${
+                legendOpen ? 'w-44 opacity-100 p-3' : 'w-0 opacity-0 p-0'
+              }`}
+            >
+              {legendOpen && (
+                <>
+                  <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Layers</p>
+
+                  <label className="flex items-center gap-2 cursor-pointer mb-1">
+                    <input
+                      type="checkbox"
+                      checked={showActivities}
+                      onChange={e => setShowActivities(e.target.checked)}
+                    />
+                    <span>🏔️ Activities</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer mb-1">
+                    <input
+                      type="checkbox"
+                      checked={showDriving}
+                      onChange={e => setShowDriving(e.target.checked)}
+                    />
+                    <span>🚗 Driving</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={showLodging}
+                      onChange={e => setShowLodging(e.target.checked)}
+                    />
+                    <span>🏨 Lodging</span>
+                  </label>
+
+                  <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide border-t pt-2">Days</p>
+
+                  <div className="flex flex-wrap gap-1">
+                    {/* All Days chip */}
+                    <button
+                      onClick={() => setSelectedDays([])}
+                      className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                        selectedDays.length === 0
+                          ? 'bg-orange-500 text-white border-orange-500'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
+                      }`}
+                    >
+                      All
+                    </button>
+
+                    {/* Individual day chips */}
+                    {trip.days.map(day => (
+                      <button
+                        key={day.dayNumber}
+                        onClick={() => {
+                          setSelectedDays(prev =>
+                            prev.includes(day.dayNumber)
+                              ? prev.filter(d => d !== day.dayNumber)
+                              : [...prev, day.dayNumber]
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                          selectedDays.includes(day.dayNumber)
+                            ? 'bg-orange-500 text-white border-orange-500'
+                            : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
+                        }`}
+                      >
+                        {day.dayNumber}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

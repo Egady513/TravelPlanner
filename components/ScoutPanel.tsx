@@ -135,18 +135,18 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-orange-50">
           <div className="flex items-center gap-2">
-            <span className="text-xl">ðŸ•</span>
+            <span className="text-xl">🐕</span>
             <h2 className="font-bold text-gray-900">Scout</h2>
             <span className="text-xs text-gray-500">your trip assistant</span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close Scout">âœ•</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close Scout">✕</button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
             <div className="text-center text-gray-400 text-sm mt-8">
-              <p className="text-2xl mb-2">ðŸ•</p>
+              <p className="text-2xl mb-2">🐕</p>
               <p>Hi! I&apos;m Scout, your road trip assistant.</p>
               <p className="mt-1">Ask me anything about your trip!</p>
             </div>

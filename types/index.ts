@@ -25,6 +25,8 @@ export interface Activity {
   isDogFriendly: boolean;
   notes?: string;
   showOnMap?: boolean;  // undefined / true = visible on map, false = hidden
+  requiresTickets?: boolean;
+  ticketsPurchased?: boolean;
 }
 
 export interface Trail extends Activity {
@@ -39,6 +41,7 @@ export interface Hotel extends Activity {
   address?: string;
   phone?: string;
   confirmationNumber?: string;
+  pricePerNight?: number;
 }
 
 export interface Restaurant extends Activity {
@@ -57,6 +60,7 @@ export interface CampingSpot extends Activity {
     cellCoverage: boolean;
     water: boolean;
   };
+  pricePerNight?: number;
 }
 
 export interface Park extends Activity {
