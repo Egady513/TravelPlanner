@@ -1,9 +1,18 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
-import { Trip, Activity, WeatherData } from '@/types';
+import { Trip, Activity, WeatherData, Day } from '@/types';
 import { storage } from './storage';
 import { validateTrip } from './validation';
+import { logRemovedItemToDb, saveScoutAction } from './supabase';
+
+export interface RouteChangePayload {
+  affected_day_numbers: number[];
+  description: string;
+  reason: string;
+  new_days: Day[];
+  new_end_date: string; // ISO date string
+}
 
 interface TripContextType {
   trip: Trip | null;
@@ -17,6 +26,9 @@ interface TripContextType {
   selectedDay: number | null;
   setSelectedDay: (dayNumber: number | null) => void;
   isSaving: boolean;
+  logRemovedItem: (itemType: 'activity' | 'day' | 'lodging', name: string, reason?: string) => void;
+  applyRouteChange: (payload: RouteChangePayload) => void;
+  addDay: () => void;
 }
 
 const TripContext = createContext<TripContextType | undefined>(undefined);
@@ -46,60 +58,38 @@ export function TripProvider({ children }: { children: ReactNode }) {
       }
       setIsInitialized(true);
     };
-
     loadInitialTrip();
   }, []);
 
   // Debounced save to Supabase whenever trip changes
   useEffect(() => {
     if (!isInitialized || !trip) return;
-
-    // Clear any pending save
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
-
-    // Debounce: save 500ms after last change (avoids hammering DB during rapid edits)
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); }
     saveTimerRef.current = setTimeout(async () => {
       setIsSaving(true);
-      try {
-        await storage.saveTrip(trip);
-      } catch (err) {
-        console.error('Failed to save trip:', err);
-      }
+      try { await storage.saveTrip(trip); } catch (err) {
+        console.error('Failed to save trip:', err); }
       setIsSaving(false);
     }, 500);
-
-    return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-    };
+    return () => { if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); } };
   }, [trip, isInitialized]);
 
   const setTrip = useCallback((newTrip: Trip) => {
     const validatedDays = validateTrip(newTrip);
     const validatedTrip = { ...newTrip, days: validatedDays };
     setTripState(validatedTrip);
-    if (validatedTrip.days.length > 0) {
-      setSelectedDay(prev => prev ?? 1);
-    }
+    if (validatedTrip.days.length > 0) { setSelectedDay(prev => prev ?? 1); }
   }, []);
 
   const addActivity = useCallback((activity: Activity) => {
     setTripState(prev => {
       if (!prev) return prev;
-
       const updatedDays = prev.days.map(day => {
         if (day.dayNumber === activity.dayNumber) {
-          return {
-            ...day,
-            activities: [...day.activities, activity],
-          };
+          return { ...day, activities: [...day.activities, activity] };
         }
         return day;
       });
-
       const tripWithUpdates = { ...prev, days: updatedDays };
       const validatedDays = validateTrip(tripWithUpdates);
       return { ...tripWithUpdates, days: validatedDays };
@@ -109,12 +99,14 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const removeActivity = useCallback((activityId: string) => {
     setTripState(prev => {
       if (!prev) return prev;
-
+      // Log the removal before filtering
+      const removedActivity = prev.days.flatMap(d => d.activities).find(a => a.id === activityId);
+      if (removedActivity && prev.id) {
+        logRemovedItemToDb(prev.id, 'activity', removedActivity.name);
+      }
       const updatedDays = prev.days.map(day => ({
-        ...day,
-        activities: day.activities.filter(a => a.id !== activityId),
+        ...day, activities: day.activities.filter(a => a.id !== activityId),
       }));
-
       const tripWithUpdates = { ...prev, days: updatedDays };
       const validatedDays = validateTrip(tripWithUpdates);
       return { ...tripWithUpdates, days: validatedDays };
@@ -124,16 +116,12 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const updateActivity = useCallback((activityId: string, updates: Partial<Activity>) => {
     setTripState(prev => {
       if (!prev) return prev;
-
       const updatedDays = prev.days.map(day => ({
         ...day,
         activities: day.activities.map(activity =>
-          activity.id === activityId
-            ? { ...activity, ...updates }
-            : activity
+          activity.id === activityId ? { ...activity, ...updates } : activity
         ),
       }));
-
       const tripWithUpdates = { ...prev, days: updatedDays };
       const validatedDays = validateTrip(tripWithUpdates);
       return { ...tripWithUpdates, days: validatedDays };
@@ -143,13 +131,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const reorderActivities = useCallback((dayNumber: number, activities: Activity[]) => {
     setTripState(prev => {
       if (!prev) return prev;
-
       const updatedDays = prev.days.map(day =>
-        day.dayNumber === dayNumber
-          ? { ...day, activities }
-          : day
+        day.dayNumber === dayNumber ? { ...day, activities } : day
       );
-
       const tripWithUpdates = { ...prev, days: updatedDays };
       const validatedDays = validateTrip(tripWithUpdates);
       return { ...tripWithUpdates, days: validatedDays };
@@ -159,12 +143,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const setDayWeather = useCallback((dayNumber: number, weather: WeatherData) => {
     setTripState(prev => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        days: prev.days.map(d =>
-          d.dayNumber === dayNumber ? { ...d, weather } : d
-        ),
-      };
+      return { ...prev, days: prev.days.map(d => d.dayNumber === dayNumber ? { ...d, weather } : d) };
     });
   }, []);
 
@@ -173,20 +152,56 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setSelectedDay(null);
   }, []);
 
+  const logRemovedItem = useCallback((
+    itemType: 'activity' | 'day' | 'lodging',
+    name: string,
+    reason?: string
+  ) => {
+    if (!trip?.id) return;
+    logRemovedItemToDb(trip.id, itemType, name, reason);
+  }, [trip?.id]);
+
+  const applyRouteChange = useCallback((payload: RouteChangePayload) => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      const beforeSnapshot = payload.affected_day_numbers.map(n => prev.days.find(d => d.dayNumber === n));
+      const newEndDate = new Date(payload.new_end_date);
+      const updatedTrip = { ...prev, days: payload.new_days, endDate: newEndDate };
+      const validatedDays = validateTrip(updatedTrip);
+      const finalTrip = { ...updatedTrip, days: validatedDays };
+      saveScoutAction(
+        prev.id, 'route_change', payload.description, beforeSnapshot, payload.new_days
+      ).catch(err => console.error('Failed to save scout action:', err));
+      return finalTrip;
+    });
+  }, []);
+
+  const addDay = useCallback(() => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      const lastDay = prev.days[prev.days.length - 1];
+      const newDayNumber = lastDay ? lastDay.dayNumber + 1 : 1;
+      const newDate = new Date(prev.startDate);
+      newDate.setDate(newDate.getDate() + (newDayNumber - 1));
+      const newDay: Day = {
+        dayNumber: newDayNumber, date: newDate, activities: [],
+        validationStatus: { level: 'success', messages: [] },
+      };
+      const newEndDate = new Date(prev.endDate);
+      newEndDate.setDate(newEndDate.getDate() + 1);
+      const updatedTrip = { ...prev, days: [...prev.days, newDay], endDate: newEndDate };
+      const validatedDays = validateTrip(updatedTrip);
+      return { ...updatedTrip, days: validatedDays };
+    });
+  }, []);
+
   return (
     <TripContext.Provider
       value={{
-        trip,
-        setTrip,
-        addActivity,
-        removeActivity,
-        updateActivity,
-        reorderActivities,
-        setDayWeather,
-        clearTrip,
-        selectedDay,
-        setSelectedDay,
-        isSaving,
+        trip, setTrip, addActivity, removeActivity, updateActivity,
+        reorderActivities, setDayWeather, clearTrip,
+        selectedDay, setSelectedDay, isSaving,
+        logRemovedItem, applyRouteChange, addDay,
       }}
     >
       {children}

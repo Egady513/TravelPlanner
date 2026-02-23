@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -9,7 +9,7 @@ import AddActivityForm from './AddActivityForm';
 import ScoutTip from '@/components/ScoutTip';
 
 export default function Sidebar() {
-  const { trip, clearTrip, selectedDay } = useTrip();
+  const { trip, clearTrip, selectedDay, addDay } = useTrip();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -23,10 +23,8 @@ export default function Sidebar() {
       return new Set<string>();
     }
   });
-
   useEffect(() => {
     if (!trip) return;
-
     const timer = setTimeout(async () => {
       try {
         const res = await fetch('/api/scout/tips', {
@@ -35,23 +33,18 @@ export default function Sidebar() {
           body: JSON.stringify({ trip }),
         });
         const data = await res.json() as { tips?: Array<{ id: string; message: string; type: 'warning' | 'info' | 'suggestion' }> };
-        if (data.tips && data.tips.length > 0) {
-          setTips(data.tips);
-        }
+        if (data.tips && data.tips.length > 0) { setTips(data.tips); }
       } catch {
-        // Silent fail — tips are optional
+        // Silent fail
       }
-    }, 3000); // 3 second debounce
-
+    }, 3000);
     return () => clearTimeout(timer);
   }, [trip]);
 
   const handleDismissTip = (id: string) => {
     setDismissedTipIds(prev => {
       const next = new Set([...Array.from(prev), id]);
-      try {
-        localStorage.setItem('scout-dismissed-tips', JSON.stringify(Array.from(next)));
-      } catch { /* ignore */ }
+      try { localStorage.setItem('scout-dismissed-tips', JSON.stringify(Array.from(next))); } catch { /* ignore */ }
       return next;
     });
   };
@@ -90,7 +83,7 @@ export default function Sidebar() {
             className="text-gray-500 hover:text-gray-700 p-1"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? '→' : '←'}
+            {isCollapsed ? 'â†’' : 'â†'}
           </button>
         </div>
 
@@ -103,7 +96,7 @@ export default function Sidebar() {
               {visibleTips.length > 0 && (
                 <div className="px-3 pt-3 space-y-2">
                   <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                    <span>🐕</span> Scout Tips
+                    <span>ðŸ•</span> Scout Tips
                   </p>
                   {visibleTips.map(tip => (
                     <ScoutTip
@@ -125,6 +118,15 @@ export default function Sidebar() {
                     onSelect={() => setShowDetailPanel(true)}
                   />
                 ))}
+              </div>
+              {/* Add Day button */}
+              <div className="px-4 pb-2">
+                <button
+                  onClick={addDay}
+                  className="w-full text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-2 px-3 rounded-md transition-colors border border-blue-200 border-dashed"
+                >
+                  + Add Day
+                </button>
               </div>
               <div className="p-4 border-t border-gray-200">
                 <button
@@ -193,6 +195,16 @@ export default function Sidebar() {
                 isSelected={selectedDay === day.dayNumber}
               />
             ))}
+          </div>
+
+          {/* Mobile Add Day button */}
+          <div className="mt-3">
+            <button
+              onClick={addDay}
+              className="w-full text-sm text-blue-600 hover:text-blue-700 py-2 px-3 rounded-md border border-blue-200 border-dashed"
+            >
+              + Add Day
+            </button>
           </div>
         </div>
       </div>

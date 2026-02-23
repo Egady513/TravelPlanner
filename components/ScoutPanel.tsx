@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { useTrip } from '@/lib/store';
@@ -14,64 +14,85 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const sendMessage = async () => {
     if (!inputValue.trim() || isStreaming) return;
 
     const userMessage = { role: 'user' as const, content: inputValue.trim() };
-    setMessages(prev => [...prev, userMessage]);
+    const outgoingMessages = [...messages, userMessage];
+    setMessages(prev => [...prev, userMessage, { role: 'assistant', content: '' }]);
     setInputValue('');
     setIsStreaming(true);
 
-    // Append empty assistant message placeholder
-    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const response = await fetch('/api/scout/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMessage], tripContext: trip }),
+        body: JSON.stringify({ messages: outgoingMessages, tripContext: trip }),
+        signal: controller.signal,
       });
 
-      const reader = response.body!.getReader();
+      if (!response.ok) throw new Error();
+      if (!response.body) throw new Error('Response body is not readable as a stream');
+
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        buffer += decoder.decode(value, { stream: true });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        // Process complete SSE messages (separated by \n\n)
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() ?? '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (!line.startsWith('data: ')) continue;
             const data = line.slice(6);
             if (data === '[DONE]') break;
             try {
               const parsed = JSON.parse(data) as { text?: string; error?: string };
-              if (parsed.text) {
+              const chunk = parsed.text ?? parsed.error ?? '';
+              if (chunk) {
                 setMessages(prev => {
                   const updated = [...prev];
                   updated[updated.length - 1] = {
                     role: 'assistant',
-                    content: updated[updated.length - 1].content + parsed.text,
+                    content: updated[updated.length - 1].content + chunk,
                   };
                   return updated;
                 });
               }
-            } catch { /* skip malformed chunks */ }
+            } catch { /* skip malformed SSE chunks */ }
           }
         }
       }
     } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
       console.error('Scout chat error:', err);
       setMessages(prev => {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: 'assistant', content: 'Sorry, I had trouble connecting. Please try again.' };
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: 'Sorry, I had trouble connecting. Please try again.',
+        };
         return updated;
       });
     } finally {
@@ -81,12 +102,9 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
 
   return (
     <>
-      {/* Backdrop (optional, subtle) */}
+      {/* Backdrop */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 z-40" onClick={onClose} />
       )}
 
       {/* Drawer */}
@@ -94,29 +112,25 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-orange-50">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🐕</span>
+            <span className="text-xl">ðŸ•</span>
             <h2 className="font-bold text-gray-900">Scout</h2>
             <span className="text-xs text-gray-500">your trip assistant</span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close Scout">✕</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close Scout">âœ•</button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
             <div className="text-center text-gray-400 text-sm mt-8">
-              <p className="text-2xl mb-2">🐕</p>
+              <p className="text-2xl mb-2">ðŸ•</p>
               <p>Hi! I&apos;m Scout, your road trip assistant.</p>
               <p className="mt-1">Ask me anything about your trip!</p>
             </div>
           )}
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                msg.role === 'user'
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
+              <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${msg.role === 'user' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
                 {msg.content || (isStreaming && i === messages.length - 1 ? '...' : '')}
               </div>
             </div>
