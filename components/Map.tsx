@@ -23,6 +23,15 @@ const markerColors: Record<ActivityType, string> = {
   driving: '#6b7280', // gray
 };
 
+const activityEmojis: Record<ActivityType, string> = {
+  trail: '🥾',
+  hotel: '🏨',
+  restaurant: '🍽️',
+  camping: '⛺',
+  park: '🏞️',
+  driving: '🚗',
+};
+
 // Default map center (USA center)
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 };
 
@@ -91,7 +100,7 @@ export default function TripMap(props: MapProps = {}) {
   const [legendOpen, setLegendOpen] = useState(true);
 
   // Markers
-  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
+  const markersRef = useRef<Map<string, google.maps.marker.AdvancedMarkerElement>>(new Map());
 
   // Dashed polylines for driving activity start→end segments
   const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
@@ -147,6 +156,7 @@ export default function TripMap(props: MapProps = {}) {
         const mapInstance = new maps.Map(mapRef.current, {
           center,
           zoom,
+          mapId: 'DEMO_MAP_ID',  // required for AdvancedMarkerElement
           mapTypeControl: true,
           fullscreenControl: true,
           streetViewControl: false,
@@ -185,7 +195,7 @@ export default function TripMap(props: MapProps = {}) {
     if (!map || !trip) return;
 
     // Clear existing markers
-    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current.forEach(marker => { marker.map = null; });
     markersRef.current.clear();
 
     const allActivities = trip.days.flatMap(day => day.activities).filter(a => {
@@ -199,18 +209,26 @@ export default function TripMap(props: MapProps = {}) {
     });
 
     allActivities.forEach(activity => {
-      const marker = new google.maps.Marker({
+      const el = document.createElement('div');
+      el.style.cssText = [
+        'width:34px', 'height:34px',
+        `background:${markerColors[activity.type]}`,
+        'border-radius:50%',
+        'border:2px solid white',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'font-size:17px',
+        'box-shadow:0 2px 6px rgba(0,0,0,0.35)',
+        'cursor:pointer',
+      ].join(';');
+      el.textContent = activityEmojis[activity.type] ?? '📍';
+
+      const marker = new google.maps.marker.AdvancedMarkerElement({
         position: activity.coordinates,
         map,
         title: activity.name,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: markerColors[activity.type],
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        },
+        content: el,
       });
 
       marker.addListener('click', () => {
