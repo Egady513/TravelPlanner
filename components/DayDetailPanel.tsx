@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Day, Activity } from '@/types';
 import { useTrip } from '@/lib/store';
 import { getValidationEmoji, getValidationColor } from '@/lib/validation';
@@ -26,8 +27,10 @@ function getDogStatus(activities: Activity[]) {
 }
 
 export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetailPanelProps) {
-  const { removeActivity, reorderActivities, updateActivity } = useTrip();
+  const { removeActivity, reorderActivities, updateActivity, trip } = useTrip();
   const dogStatus = getDogStatus(day.activities);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizeReason, setOptimizeReason] = useState<string | null>(null);
 
   const formatDate = (date?: Date | string) => {
     if (!date) return '';
@@ -47,6 +50,32 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
     reorderActivities(day.dayNumber, reordered);
   };
 
+  const handleOptimizeOrder = async () => {
+    if (isOptimizing || day.activities.filter(a => !a.isContinuingStay).length < 2) return;
+    setIsOptimizing(true);
+    setOptimizeReason(null);
+    try {
+      const res = await fetch('/api/scout/optimize-day', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day, trip }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json() as { order: string[]; reasoning: string };
+      const reordered = data.order
+        .map(id => day.activities.find(a => a.id === id))
+        .filter(Boolean) as typeof day.activities;
+      reorderActivities(day.dayNumber, reordered);
+      setOptimizeReason(data.reasoning);
+      setTimeout(() => setOptimizeReason(null), 6000);
+    } catch {
+      setOptimizeReason('Could not optimize — try again.');
+      setTimeout(() => setOptimizeReason(null), 4000);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-white border-l border-gray-200 w-80 flex-shrink-0">
       {/* Header */}
@@ -55,9 +84,21 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
           <h3 className="font-bold text-gray-900">Day {day.dayNumber}</h3>
           {day.date && <p className="text-xs text-gray-500">{formatDate(day.date)}</p>}
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
-          ✕
-        </button>
+        <div className="flex items-center gap-1">
+          {day.activities.filter(a => !a.isContinuingStay).length >= 2 && (
+            <button
+              onClick={handleOptimizeOrder}
+              disabled={isOptimizing}
+              className="text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
+              title="Let Scout reorder activities for the best experience"
+            >
+              {isOptimizing ? '⏳' : '✨'} Optimize
+            </button>
+          )}
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Status Badges */}
@@ -84,6 +125,12 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
           </span>
         )}
       </div>
+
+      {optimizeReason && (
+        <div className="mx-4 mb-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800">
+          🐕 {optimizeReason}
+        </div>
+      )}
 
       {/* Activities Timeline */}
       <div className="flex-1 overflow-y-auto p-4">
