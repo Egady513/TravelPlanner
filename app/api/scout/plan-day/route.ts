@@ -21,6 +21,10 @@ export async function POST(request: Request) {
 
   const { day, trip } = body;
 
+  if (!day || !trip) {
+    return Response.json({ error: 'day and trip required' }, { status: 400 });
+  }
+
   const existingSection = day.activities.length > 0
     ? `Existing activities to keep (plan AROUND these, don't repeat them):\n${day.activities.map(a => `- [${a.type}] ${a.name}`).join('\n')}`
     : 'No activities yet — plan the full day from scratch.';
@@ -30,7 +34,9 @@ export async function POST(request: Request) {
   const locationActivity = day.activities.find(a => a.type !== 'driving')
     || prevDay?.activities.find(a => a.type === 'hotel' || a.type === 'camping')
     || prevDay?.activities.find(a => a.type !== 'driving');
-  const locationHint = locationActivity?.name || `Day ${day.dayNumber} of the trip`;
+  const locationHint = locationActivity?.name
+    || trip.startingLocation?.address
+    || `Day ${day.dayNumber} of the trip`;
 
   const prompt = `You are Scout, an expert road trip planner. Plan Day ${day.dayNumber}.
 
