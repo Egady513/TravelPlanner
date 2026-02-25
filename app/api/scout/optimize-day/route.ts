@@ -13,8 +13,15 @@ export async function POST(request: Request) {
 
   const { day, trip } = body;
 
-  if (!day?.activities?.length) {
-    return Response.json({ error: 'day with activities required' }, { status: 400 });
+  if (!day?.activities?.length || !trip) {
+    return Response.json({ error: 'day with activities and trip required' }, { status: 400 });
+  }
+
+  const hasValidCoords = day.activities.every(
+    a => typeof a.coordinates?.lat === 'number' && typeof a.coordinates?.lng === 'number'
+  );
+  if (!hasValidCoords) {
+    return Response.json({ error: 'All activities must have valid coordinates' }, { status: 400 });
   }
 
   const activityList = day.activities.map((a, i) =>
@@ -46,7 +53,14 @@ Respond with ONLY valid JSON, no markdown, no explanation outside JSON:
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
-    const result = JSON.parse(text) as { order: string[]; reasoning: string };
+
+    let result: { order: string[]; reasoning: string };
+    try {
+      result = JSON.parse(text) as { order: string[]; reasoning: string };
+    } catch {
+      console.error('optimize-day: JSON parse failure, raw text:', text);
+      return Response.json({ error: 'Scout returned unparseable response' }, { status: 500 });
+    }
 
     // Validate all returned IDs exist
     const validIds = new Set(day.activities.map(a => a.id));
