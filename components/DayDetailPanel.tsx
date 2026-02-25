@@ -106,7 +106,7 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
                         {...dragProvided.draggableProps}
                       >
                         {activity.isContinuingStay ? (
-                          <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-gray-50 opacity-60">
+                          <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-gray-50 opacity-60 group">
                             <span className="text-xl flex-shrink-0 ml-4">{activityIcons[activity.type] ?? '📍'}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-500 italic">
