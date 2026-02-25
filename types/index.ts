@@ -27,6 +27,10 @@ export interface Activity {
   showOnMap?: boolean;  // undefined / true = visible on map, false = hidden
   requiresTickets?: boolean;
   ticketsPurchased?: boolean;
+  // Multi-night stay support
+  isContinuingStay?: boolean;
+  sourceActivityId?: string;
+  parentDayNumber?: number;
 }
 
 export interface Trail extends Activity {
