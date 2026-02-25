@@ -20,12 +20,24 @@ export async function POST(request: Request) {
 
   const { type, day, trip } = body;
 
+  // Fix C1: Input validation
+  if (!type || !day?.activities || !trip) {
+    return Response.json({ error: 'type, day, and trip are required' }, { status: 400 });
+  }
+
+  // Fix C2: Validate ActivityType against allowlist
+  const VALID_TYPES = ['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving'] as const;
+  if (!VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
+    return Response.json({ error: 'Invalid activity type' }, { status: 400 });
+  }
+
   const existingNames = day.activities.map(a => a.name).join(', ') || 'none';
   const locationHint = day.activities.find(a => a.type !== 'driving')?.name
     || day.activities[0]?.name
     || `Day ${day.dayNumber} of the trip`;
 
-  const prompt = `You are Scout, a road trip assistant. Suggest 4 real ${type} options for a road trip day.
+  // Fix I3: Changed "4" to "3 to 5"
+  const prompt = `You are Scout, a road trip assistant. Suggest 3 to 5 real ${type} options for a road trip day.
 
 Location context: near ${locationHint}
 Already planned this day: ${existingNames}
@@ -52,7 +64,21 @@ Respond with ONLY valid JSON, no markdown:
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
-    const result = JSON.parse(text) as { suggestions: Suggestion[] };
+
+    // Fix I1: Separate JSON.parse into its own try/catch
+    let result: { suggestions: Suggestion[] };
+    try {
+      result = JSON.parse(text) as { suggestions: Suggestion[] };
+    } catch {
+      console.error('recommend-activities: JSON parse failure, raw text:', text);
+      return Response.json({ suggestions: [] });
+    }
+
+    // Fix I2: Validate response shape
+    if (!Array.isArray(result.suggestions)) {
+      return Response.json({ suggestions: [] });
+    }
+
     return Response.json(result);
   } catch (err) {
     console.error('recommend-activities error:', err);
