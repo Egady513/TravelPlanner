@@ -127,8 +127,9 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
       </div>
 
       {optimizeReason && (
-        <div className="mx-4 mb-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800">
-          🐕 {optimizeReason}
+        <div className="mx-4 mb-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800 flex items-start gap-2">
+          <span className="flex-1">🐕 {optimizeReason}</span>
+          <button onClick={() => setOptimizeReason(null)} className="flex-shrink-0 text-orange-400 hover:text-orange-600 leading-none">✕</button>
         </div>
       )}
 
