@@ -37,7 +37,7 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
 
   const ticketActivities = trip.days.flatMap(d =>
     d.activities
-      .filter(a => a.requiresTickets === true)
+      .filter(a => a.requiresTickets === true && !a.isContinuingStay)
       .map(a => ({ activity: a, dayNumber: d.dayNumber }))
   );
 
