@@ -84,11 +84,32 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const addActivity = useCallback((activity: Activity) => {
     setTripState(prev => {
       if (!prev) return prev;
-      const updatedDays = prev.days.map(day => {
-        if (day.dayNumber === activity.dayNumber) {
-          return { ...day, activities: [...day.activities, activity] };
+      const nights = (activity as { nights?: number }).nights ?? 1;
+      const isLodging = activity.type === 'hotel' || activity.type === 'camping';
+
+      // Build continuing stay copies for multi-night lodging
+      const continuingStays: Activity[] = [];
+      if (isLodging && nights > 1) {
+        for (let n = 1; n < nights; n++) {
+          const targetDayNumber = activity.dayNumber + n;
+          if (prev.days.some(d => d.dayNumber === targetDayNumber)) {
+            continuingStays.push({
+              ...activity,
+              id: crypto.randomUUID(),
+              dayNumber: targetDayNumber,
+              isContinuingStay: true,
+              sourceActivityId: activity.id,
+              parentDayNumber: activity.dayNumber,
+            });
+          }
         }
-        return day;
+      }
+
+      const allToAdd = [activity, ...continuingStays];
+      const updatedDays = prev.days.map(day => {
+        const toAdd = allToAdd.filter(a => a.dayNumber === day.dayNumber);
+        if (toAdd.length === 0) return day;
+        return { ...day, activities: [...day.activities, ...toAdd] };
       });
       const tripWithUpdates = { ...prev, days: updatedDays };
       const validatedDays = validateTrip(tripWithUpdates);
@@ -105,7 +126,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
         logRemovedItemToDb(prev.id, 'activity', removedActivity.name);
       }
       const updatedDays = prev.days.map(day => ({
-        ...day, activities: day.activities.filter(a => a.id !== activityId),
+        ...day, activities: day.activities.filter(a =>
+          a.id !== activityId && a.sourceActivityId !== activityId
+        ),
       }));
       const tripWithUpdates = { ...prev, days: updatedDays };
       const validatedDays = validateTrip(tripWithUpdates);
