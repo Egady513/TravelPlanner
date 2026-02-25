@@ -84,14 +84,17 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const addActivity = useCallback((activity: Activity) => {
     setTripState(prev => {
       if (!prev) return prev;
-      const nights = (activity as { nights?: number }).nights ?? 1;
       const isLodging = activity.type === 'hotel' || activity.type === 'camping';
+      const nights = isLodging
+        ? ((activity as { nights?: number }).nights ?? 1)
+        : 1;
 
       // Build continuing stay copies for multi-night lodging
       const continuingStays: Activity[] = [];
       if (isLodging && nights > 1) {
         for (let n = 1; n < nights; n++) {
           const targetDayNumber = activity.dayNumber + n;
+          // Non-contiguous day numbers are silently skipped — fewer copies than nights-1 may be created.
           if (prev.days.some(d => d.dayNumber === targetDayNumber)) {
             continuingStays.push({
               ...activity,
