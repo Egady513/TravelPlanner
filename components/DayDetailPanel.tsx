@@ -104,72 +104,95 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
                       <div
                         ref={dragProvided.innerRef}
                         {...dragProvided.draggableProps}
-                        className={`flex items-start gap-3 group p-2 rounded-lg ${
-                          dragSnapshot.isDragging ? 'bg-orange-50 shadow-md' : 'hover:bg-gray-50'
-                        }`}
                       >
-                        {/* Drag handle + icon */}
-                        <div
-                          {...dragProvided.dragHandleProps}
-                          className="flex flex-col items-center flex-shrink-0 pt-1 cursor-grab active:cursor-grabbing"
-                        >
-                          <span className="text-gray-300 text-xs leading-none select-none">⠿</span>
-                          <span className="text-xl mt-0.5">{activityIcons[activity.type] ?? '📍'}</span>
-                          {index < day.activities.length - 1 && (
-                            <div className="w-0.5 h-4 bg-gray-200 mt-1" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-gray-900 text-sm truncate">{activity.name}</p>
-                            {activity.requiresTickets === true && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateActivity(activity.id, { ticketsPurchased: !activity.ticketsPurchased });
-                                }}
-                                title={activity.ticketsPurchased ? 'Tickets purchased — click to toggle' : 'Tickets needed — click to mark purchased'}
-                                className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-medium cursor-pointer ${
-                                  activity.ticketsPurchased
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-amber-100 text-amber-700'
-                                }`}
-                              >
-                                {activity.ticketsPurchased ? '🎟️ ✓' : '🎟️ Tickets needed'}
-                              </button>
-                            )}
+                        {activity.isContinuingStay ? (
+                          <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-gray-50 opacity-60">
+                            <span className="text-xl flex-shrink-0 ml-4">{activityIcons[activity.type] ?? '📍'}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-500 italic">
+                                {activityIcons[activity.type]} Continuing stay
+                                {activity.parentDayNumber ? ` (from Day ${activity.parentDayNumber})` : ''}
+                              </p>
+                              <p className="text-xs text-gray-400 truncate">{activity.name}</p>
+                            </div>
+                            <button
+                              onClick={() => removeActivity(activity.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 text-xs p-1"
+                              aria-label="Remove continuing stay"
+                            >
+                              ✕
+                            </button>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-gray-500 capitalize">{activity.type}</span>
-                            {activity.isDogFriendly ? (
-                              <span className="text-xs text-green-600">🐕</span>
-                            ) : (
-                              <span className="text-xs text-red-500">🚫</span>
-                            )}
+                        ) : (
+                          <div
+                            className={`flex items-start gap-3 group p-2 rounded-lg ${
+                              dragSnapshot.isDragging ? 'bg-orange-50 shadow-md' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            {/* Drag handle + icon */}
+                            <div
+                              {...dragProvided.dragHandleProps}
+                              className="flex flex-col items-center flex-shrink-0 pt-1 cursor-grab active:cursor-grabbing"
+                            >
+                              <span className="text-gray-300 text-xs leading-none select-none">⠿</span>
+                              <span className="text-xl mt-0.5">{activityIcons[activity.type] ?? '📍'}</span>
+                              {index < day.activities.length - 1 && (
+                                <div className="w-0.5 h-4 bg-gray-200 mt-1" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-gray-900 text-sm truncate">{activity.name}</p>
+                                {activity.requiresTickets === true && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateActivity(activity.id, { ticketsPurchased: !activity.ticketsPurchased });
+                                    }}
+                                    title={activity.ticketsPurchased ? 'Tickets purchased — click to toggle' : 'Tickets needed — click to mark purchased'}
+                                    className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded font-medium cursor-pointer ${
+                                      activity.ticketsPurchased
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-amber-100 text-amber-700'
+                                    }`}
+                                  >
+                                    {activity.ticketsPurchased ? '🎟️ ✓' : '🎟️ Tickets needed'}
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-gray-500 capitalize">{activity.type}</span>
+                                {activity.isDogFriendly ? (
+                                  <span className="text-xs text-green-600">🐕</span>
+                                ) : (
+                                  <span className="text-xs text-red-500">🚫</span>
+                                )}
+                              </div>
+                              {activity.notes && (
+                                <p className="text-xs text-gray-400 mt-1 truncate">{activity.notes}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateActivity(activity.id, { showOnMap: activity.showOnMap === false ? true : false });
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 text-xs p-1"
+                              title={activity.showOnMap === false ? 'Show on map' : 'Hide from map'}
+                              aria-label={activity.showOnMap === false ? 'Show on map' : 'Hide from map'}
+                            >
+                              {activity.showOnMap === false ? '👁️‍🗨️' : '👁️'}
+                            </button>
+                            <button
+                              onClick={() => removeActivity(activity.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 text-xs p-1"
+                              aria-label="Remove"
+                            >
+                              ✕
+                            </button>
                           </div>
-                          {activity.notes && (
-                            <p className="text-xs text-gray-400 mt-1 truncate">{activity.notes}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateActivity(activity.id, { showOnMap: activity.showOnMap === false ? true : false });
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 text-xs p-1"
-                          title={activity.showOnMap === false ? 'Show on map' : 'Hide from map'}
-                          aria-label={activity.showOnMap === false ? 'Show on map' : 'Hide from map'}
-                        >
-                          {activity.showOnMap === false ? '👁️‍🗨️' : '👁️'}
-                        </button>
-                        <button
-                          onClick={() => removeActivity(activity.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 text-xs p-1"
-                          aria-label="Remove"
-                        >
-                          ✕
-                        </button>
+                        )}
                       </div>
                     )}
                   </Draggable>

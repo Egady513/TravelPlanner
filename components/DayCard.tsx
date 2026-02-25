@@ -81,7 +81,7 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">
-            {day.activities.length} {day.activities.length === 1 ? 'activity' : 'activities'}
+            {day.activities.filter(a => !a.isContinuingStay).length} {day.activities.filter(a => !a.isContinuingStay).length === 1 ? 'activity' : 'activities'}
           </span>
           {dogStatus === 'dog' && (
             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
@@ -106,9 +106,9 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
         </div>
       </div>
 
-      {day.activities.length > 0 && (
+      {day.activities.filter(a => !a.isContinuingStay).length > 0 && (
         <div className="space-y-1.5 mt-2">
-          {day.activities.map((activity) => (
+          {day.activities.filter(a => !a.isContinuingStay).map((activity) => (
             <div
               key={activity.id}
               className="flex items-start gap-2 text-sm group"
@@ -137,7 +137,7 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
         </div>
       )}
 
-      {day.activities.length === 0 && (
+      {day.activities.filter(a => !a.isContinuingStay).length === 0 && (
         <p className="text-sm text-gray-400 italic">No activities yet</p>
       )}
     </div>
