@@ -2,51 +2,65 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTrip } from '@/lib/store';
-import { ActivityType, Coordinates, Activity, CampingSpot, DrivingActivity } from '@/types';
+import { ActivityType, Coordinates, Activity, CampingSpot, DrivingActivity, Hotel } from '@/types';
 import PlacesAutocomplete from './PlacesAutocomplete';
 import { geocodePlace } from '@/lib/geocoding';
 
 interface AddActivityFormProps {
   coordinates?: Coordinates;
   onClose: () => void;
+  existingActivity?: Activity;
 }
 
-export default function AddActivityForm({ coordinates, onClose }: AddActivityFormProps) {
-  const { addActivity, selectedDay, trip } = useTrip();
-  const [name, setName] = useState('');
-  const [type, setType] = useState<ActivityType>('trail');
-  const [isDogFriendly, setIsDogFriendly] = useState(true);
-  const [notes, setNotes] = useState('');
+export default function AddActivityForm({ coordinates, onClose, existingActivity }: AddActivityFormProps) {
+  const { addActivity, selectedDay, trip, updateActivity } = useTrip();
+
+  // Driving-specific cast (used for initializing state)
+  const existingDrive = existingActivity as DrivingActivity | undefined;
+  // Camping-specific cast
+  const existingCamping = existingActivity as CampingSpot | undefined;
+  // Hotel/camping pricing cast
+  const existingLodging = existingActivity as (Hotel | CampingSpot) | undefined;
+
+  const [name, setName] = useState(existingActivity?.type !== 'driving' ? (existingActivity?.name ?? '') : '');
+  const [type, setType] = useState<ActivityType>(existingActivity?.type ?? 'trail');
+  const [isDogFriendly, setIsDogFriendly] = useState(existingActivity?.isDogFriendly ?? true);
+  const [notes, setNotes] = useState(existingActivity?.notes ?? '');
   const [coordinateInput, setCoordinateInput] = useState('');
-  const [parsedCoords, setParsedCoords] = useState<Coordinates | null>(coordinates ?? null);
+  const [parsedCoords, setParsedCoords] = useState<Coordinates | null>(
+    existingActivity?.coordinates ?? coordinates ?? null
+  );
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // Driving-specific fields
-  const [driveStartInput, setDriveStartInput] = useState('');
-  const [driveEndInput, setDriveEndInput] = useState('');
-  const [driveStart, setDriveStart] = useState<{ name: string; coordinates: Coordinates } | null>(null);
-  const [driveEnd, setDriveEnd] = useState<{ name: string; coordinates: Coordinates } | null>(null);
-  const [estimatedDriveHours, setEstimatedDriveHours] = useState<number | null>(null);
+  // Driving-specific
+  const [driveStartInput, setDriveStartInput] = useState(existingDrive?.startLocation?.name ?? '');
+  const [driveEndInput, setDriveEndInput] = useState(existingDrive?.endLocation?.name ?? '');
+  const [driveStart, setDriveStart] = useState<{ name: string; coordinates: Coordinates } | null>(
+    existingDrive?.startLocation ?? null
+  );
+  const [driveEnd, setDriveEnd] = useState<{ name: string; coordinates: Coordinates } | null>(
+    existingDrive?.endLocation ?? null
+  );
+  const [estimatedDriveHours, setEstimatedDriveHours] = useState<number | null>(
+    existingDrive?.estimatedDriveHours ?? null
+  );
   const [estimatedDriveDistance, setEstimatedDriveDistance] = useState<string>('');
   const [isEstimatingDriveTime, setIsEstimatingDriveTime] = useState(false);
 
-  // Camping-specific fields
-  const [sourceLink, setSourceLink] = useState('');
-  const [amenities, setAmenities] = useState({
-    free: false,
-    fireRing: false,
-    cellCoverage: false,
-    water: false,
-  });
+  // Camping-specific
+  const [sourceLink, setSourceLink] = useState(existingCamping?.sourceLink ?? '');
+  const [amenities, setAmenities] = useState(
+    existingCamping?.amenities ?? { free: false, fireRing: false, cellCoverage: false, water: false }
+  );
 
   // Hotel/camping pricing
-  const [pricePerNight, setPricePerNight] = useState<number | undefined>(undefined);
-  const [nights, setNights] = useState<number>(1);
+  const [pricePerNight, setPricePerNight] = useState<number | undefined>(existingLodging?.pricePerNight);
+  const [nights, setNights] = useState<number>(existingLodging?.nights ?? 1);
 
-  // Ticket tracking (trail, park, restaurant)
-  const [requiresTickets, setRequiresTickets] = useState(false);
-  const [ticketsPurchased, setTicketsPurchased] = useState(false);
+  // Ticket tracking
+  const [requiresTickets, setRequiresTickets] = useState(existingActivity?.requiresTickets ?? false);
+  const [ticketsPurchased, setTicketsPurchased] = useState(existingActivity?.ticketsPurchased ?? false);
 
   const currentDayNumber = selectedDay || 1;
 
@@ -97,7 +111,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         setParsedCoords(parsed);
       }
     } else {
-      setParsedCoords(coordinates ?? null);
+      setParsedCoords(existingActivity?.coordinates ?? coordinates ?? null);
     }
   }, [coordinateInput, coordinates]);
 
@@ -192,7 +206,11 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
         endLocation: driveEnd,
         estimatedDriveHours: estimatedDriveHours ?? undefined,
       } as DrivingActivity;
-      addActivity(activity);
+      if (existingActivity) {
+        updateActivity(existingActivity.id, activity as Partial<Activity>);
+      } else {
+        addActivity(activity);
+      }
       onClose();
       return;
     }
@@ -240,14 +258,18 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
       activity = baseActivity as Activity;
     }
 
-    addActivity(activity);
+    if (existingActivity) {
+      updateActivity(existingActivity.id, activity as Partial<Activity>);
+    } else {
+      addActivity(activity);
+    }
     onClose();
   };
 
   return (
     <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-h-[90vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Add Activity</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{existingActivity ? 'Edit Activity' : 'Add Activity'}</h3>
         <button
           onClick={onClose}
           className="text-gray-400 hover:text-gray-600"
@@ -580,7 +602,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
             type="submit"
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            Add Activity
+            {existingActivity ? 'Save Changes' : 'Add Activity'}
           </button>
         </div>
       </form>
