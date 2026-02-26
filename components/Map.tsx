@@ -128,7 +128,9 @@ export default function TripMap(props: MapProps = {}) {
       driveTimeInfoWindow.current = new google.maps.InfoWindow();
     }
 
-    driveTimeInfoWindow.current.setContent(`<div style="font-size:13px;padding:2px 4px">${label}</div>`);
+    driveTimeInfoWindow.current.setContent(
+      `<div style="font-size:12px;padding:3px 7px;line-height:1.4;white-space:nowrap;font-family:inherit">${label}</div>`
+    );
     driveTimeInfoWindow.current.setPosition(position);
     driveTimeInfoWindow.current.open(map);
   }, [map]);
