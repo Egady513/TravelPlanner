@@ -135,13 +135,17 @@ export default function Sidebar() {
       </div>
 
       {/* Day Detail Modal */}
-      {showDetailPanel && selectedDay && (
-        <DayDetailPanel
-          day={trip.days.find(d => d.dayNumber === selectedDay)!}
-          onClose={() => setShowDetailPanel(false)}
-          onAddActivity={() => setShowAddForm(true)}
-        />
-      )}
+      {showDetailPanel && selectedDay && (() => {
+        const detailDay = trip.days.find(d => d.dayNumber === selectedDay);
+        if (!detailDay) return null;
+        return (
+          <DayDetailPanel
+            day={detailDay}
+            onClose={() => setShowDetailPanel(false)}
+            onAddActivity={() => setShowAddForm(true)}
+          />
+        );
+      })()}
 
       {/* Add Activity Modal */}
       {showAddForm && selectedDay && typeof window !== 'undefined' &&
