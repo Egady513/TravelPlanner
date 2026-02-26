@@ -72,7 +72,7 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
         .filter(Boolean) as typeof day.activities;
 
       // Check if order actually changed
-      const currentIds = day.activities.filter(a => !a.isContinuingStay).map(a => a.id);
+      const currentIds = day.activities.map(a => a.id);
       const isSameOrder =
         data.order.length === currentIds.length &&
         data.order.every((id, i) => id === currentIds[i]);
