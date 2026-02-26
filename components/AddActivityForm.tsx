@@ -195,7 +195,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
       }
       const driveName = `Drive: ${driveStart.name} → ${driveEnd.name}`;
       const activity: Activity = {
-        id: crypto.randomUUID(),
+        id: existingActivity ? existingActivity.id : crypto.randomUUID(),
         type: 'driving',
         name: driveName,
         coordinates: driveStart.coordinates,
@@ -221,7 +221,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
     }
 
     const baseActivity = {
-      id: crypto.randomUUID(),
+      id: existingActivity ? existingActivity.id : crypto.randomUUID(),
       type,
       name: name.trim(),
       coordinates: parsedCoords!, // safe — validated above
