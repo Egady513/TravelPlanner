@@ -66,6 +66,18 @@ export default function PlacesAutocomplete({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-apply bounds if locationBias changes after mount
+  useEffect(() => {
+    if (!autocompleteRef.current || !locationBias) return;
+    const delta = 2;
+    autocompleteRef.current.setBounds(
+      new window.google.maps.LatLngBounds(
+        { lat: locationBias.lat - delta, lng: locationBias.lng - delta },
+        { lat: locationBias.lat + delta, lng: locationBias.lng + delta }
+      )
+    );
+  }, [locationBias]);
+
   return (
     <input
       ref={inputRef}
