@@ -313,8 +313,9 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
       {/* Edit Activity overlay */}
       {editingActivity && typeof window !== 'undefined' &&
         createPortal(
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={e => e.stopPropagation()}>
             <AddActivityForm
+              existingActivity={editingActivity}
               onClose={() => setEditingActivity(null)}
             />
           </div>,
