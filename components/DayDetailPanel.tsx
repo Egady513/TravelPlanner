@@ -70,9 +70,23 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
       const reordered = data.order
         .map(id => day.activities.find(a => a.id === id))
         .filter(Boolean) as typeof day.activities;
-      reorderActivities(day.dayNumber, reordered);
-      setOptimizeReason(data.reasoning);
-      setTimeout(() => setOptimizeReason(null), 6000);
+
+      // Check if order actually changed
+      const currentIds = day.activities.filter(a => !a.isContinuingStay).map(a => a.id);
+      const isSameOrder =
+        data.order.length === currentIds.length &&
+        data.order.every((id, i) => id === currentIds[i]);
+
+      if (isSameOrder) {
+        setOptimizeReason('✨ Already in great shape — no changes needed!');
+      } else {
+        reorderActivities(day.dayNumber, reordered);
+        const nonStay = reordered.filter(a => !a.isContinuingStay);
+        const names = nonStay.slice(0, 3).map((a, i) => `${i + 1}. ${a.name}`);
+        const suffix = nonStay.length > 3 ? ' → …' : '';
+        setOptimizeReason(`✨ Reordered: ${names.join(' → ')}${suffix}`);
+      }
+      setTimeout(() => setOptimizeReason(null), 10000);
     } catch {
       setOptimizeReason('Could not optimize — try again.');
       setTimeout(() => setOptimizeReason(null), 4000);
