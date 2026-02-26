@@ -13,6 +13,7 @@ interface PlacesAutocompleteProps {
   onPlaceSelected: (result: PlaceResult) => void;
   placeholder?: string;
   className?: string;
+  locationBias?: { lat: number; lng: number };
 }
 
 export default function PlacesAutocomplete({
@@ -21,6 +22,7 @@ export default function PlacesAutocomplete({
   onPlaceSelected,
   placeholder = 'Search for a place...',
   className = '',
+  locationBias,
 }: PlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -32,6 +34,16 @@ export default function PlacesAutocomplete({
     autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
       fields: ['name', 'geometry', 'formatted_address'],
     });
+
+    if (locationBias) {
+      const delta = 2; // ~2 degree radius (~140mi) soft bias
+      autocompleteRef.current.setBounds(
+        new window.google.maps.LatLngBounds(
+          { lat: locationBias.lat - delta, lng: locationBias.lng - delta },
+          { lat: locationBias.lat + delta, lng: locationBias.lng + delta }
+        )
+      );
+    }
 
     autocompleteRef.current.addListener('place_changed', () => {
       const place = autocompleteRef.current?.getPlace();

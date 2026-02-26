@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTrip } from '@/lib/store';
 import { ActivityType, Coordinates, Activity, CampingSpot, DrivingActivity } from '@/types';
 import PlacesAutocomplete from './PlacesAutocomplete';
@@ -49,6 +49,19 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
   const [ticketsPurchased, setTicketsPurchased] = useState(false);
 
   const currentDayNumber = selectedDay || 1;
+
+  // Compute location bias toward the trip's activity region
+  const locationBias = useMemo(() => {
+    if (!trip) return undefined;
+    const coords = trip.days.flatMap(d => d.activities).map(a => a.coordinates);
+    if (coords.length > 0) {
+      return {
+        lat: coords.reduce((sum, c) => sum + c.lat, 0) / coords.length,
+        lng: coords.reduce((sum, c) => sum + c.lng, 0) / coords.length,
+      };
+    }
+    return trip.startingLocation?.coordinates ?? undefined;
+  }, [trip]);
 
   // Parse coordinate input (e.g., "38.7234, -109.3421")
   const parseCoordinates = (input: string): Coordinates | null => {
@@ -278,6 +291,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
                 onPlaceSelected={handlePlaceSelected}
                 placeholder="e.g., Angels Landing Trail"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                locationBias={locationBias}
               />
               {!coordinates && (
                 <button
@@ -316,6 +330,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
                 }}
                 placeholder="e.g., Moab, UT"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                locationBias={locationBias}
               />
               {driveStart && <p className="text-xs text-green-600 mt-1">✓ {driveStart.coordinates.lat.toFixed(4)}, {driveStart.coordinates.lng.toFixed(4)}</p>}
             </div>
@@ -330,6 +345,7 @@ export default function AddActivityForm({ coordinates, onClose }: AddActivityFor
                 }}
                 placeholder="e.g., Capitol Reef National Park"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                locationBias={locationBias}
               />
               {driveEnd && <p className="text-xs text-green-600 mt-1">✓ {driveEnd.coordinates.lat.toFixed(4)}, {driveEnd.coordinates.lng.toFixed(4)}</p>}
               {isEstimatingDriveTime && (

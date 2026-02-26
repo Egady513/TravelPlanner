@@ -89,9 +89,9 @@ export default function TripMap(props: MapProps = {}) {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   // Layer filter state (all on by default)
-  const [showActivities, setShowActivities] = useState(true);
-  const [showDriving, setShowDriving] = useState(true);
-  const [showLodging, setShowLodging] = useState(true);
+  const [visibleTypes, setVisibleTypes] = useState<Set<ActivityType>>(
+    () => new Set<ActivityType>(['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving'])
+  );
 
   // Day selector state — empty array means "All Days"
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -201,11 +201,7 @@ export default function TripMap(props: MapProps = {}) {
     const allActivities = trip.days.flatMap(day => day.activities).filter(a => {
       if (a.showOnMap === false) return false;
       if (!isDaySelected(a.dayNumber)) return false;
-
-      if (a.type === 'driving') return showDriving;
-      if (a.type === 'hotel') return showLodging;
-      // trail, restaurant, park, camping → Activities layer
-      return showActivities;
+      return visibleTypes.has(a.type);
     });
 
     allActivities.forEach(activity => {
@@ -245,7 +241,7 @@ export default function TripMap(props: MapProps = {}) {
       allActivities.forEach(activity => bounds.extend(activity.coordinates));
       map.fitBounds(bounds);
     }
-  }, [map, trip, showActivities, showDriving, showLodging, selectedDays]);
+  }, [map, trip, visibleTypes, selectedDays]);
 
   // Draw real-road routes between activities in each day
   useEffect(() => {
@@ -325,7 +321,7 @@ export default function TripMap(props: MapProps = {}) {
         }
       );
     });
-  }, [map, trip, showActivities, showDriving, showLodging, selectedDays]);
+  }, [map, trip, visibleTypes, selectedDays]);
 
   // Dashed polylines for driving activity start→end
   useEffect(() => {
@@ -334,7 +330,7 @@ export default function TripMap(props: MapProps = {}) {
     drivingPolylinesRef.current.forEach(p => p.setMap(null));
     drivingPolylinesRef.current = [];
 
-    if (!showDriving) return;
+    if (!visibleTypes.has('driving')) return;
 
     const allActivities = trip.days
       .flatMap(d => d.activities)
@@ -427,7 +423,7 @@ export default function TripMap(props: MapProps = {}) {
         );
       }
     });
-  }, [map, trip, showDriving, selectedDays, showDriveTimeTooltip]);
+  }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
 
   // Fit map to selected day's activities when selectedDay changes
   useEffect(() => {
@@ -481,32 +477,31 @@ export default function TripMap(props: MapProps = {}) {
                 <>
                   <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Layers</p>
 
-                  <label className="flex items-center gap-2 cursor-pointer mb-1">
-                    <input
-                      type="checkbox"
-                      checked={showActivities}
-                      onChange={e => setShowActivities(e.target.checked)}
-                    />
-                    <span>🏔️ Activities</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer mb-1">
-                    <input
-                      type="checkbox"
-                      checked={showDriving}
-                      onChange={e => setShowDriving(e.target.checked)}
-                    />
-                    <span>🚗 Driving</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer mb-2">
-                    <input
-                      type="checkbox"
-                      checked={showLodging}
-                      onChange={e => setShowLodging(e.target.checked)}
-                    />
-                    <span>🏨 Lodging</span>
-                  </label>
+                  {(
+                    [
+                      { type: 'trail', label: 'Trail', emoji: '🥾' },
+                      { type: 'hotel', label: 'Hotel', emoji: '🏨' },
+                      { type: 'restaurant', label: 'Restaurant', emoji: '🍽️' },
+                      { type: 'camping', label: 'Camping', emoji: '⛺' },
+                      { type: 'park', label: 'Park', emoji: '🏞️' },
+                      { type: 'driving', label: 'Driving', emoji: '🚗' },
+                    ] as { type: ActivityType; label: string; emoji: string }[]
+                  ).map(({ type, label, emoji }) => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer mb-1">
+                      <input
+                        type="checkbox"
+                        checked={visibleTypes.has(type)}
+                        onChange={e => {
+                          setVisibleTypes(prev => {
+                            const next = new Set(prev);
+                            if (e.target.checked) { next.add(type); } else { next.delete(type); }
+                            return next;
+                          });
+                        }}
+                      />
+                      <span>{emoji} {label}</span>
+                    </label>
+                  ))}
 
                   <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide border-t pt-2">Days</p>
 
