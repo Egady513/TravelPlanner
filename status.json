@@ -6,11 +6,31 @@
       "role": "Lead Developer / PM",
       "model": "claude-sonnet-4-6",
       "status": "active",
-      "currentTask": "Phase 1 — P1-T1: Dog/No-Dog badge on DayCard",
-      "lastActive": "2026-02-18"
+      "currentTask": "V5 Sprint — Activity Discovery Modal + bug fixes",
+      "lastActive": "2026-02-27"
     }
   ],
   "logs": [
+    {
+      "time": "2026-02-27",
+      "agent": "claude-code",
+      "message": "V5 sprint started. Activity Discovery Modal design approved (Yelp/Google Maps style, cards + map view, Scout curation + Google Places enrichment). V5-1, V5-2, V5-3 queued."
+    },
+    {
+      "time": "2026-02-27",
+      "agent": "claude-code",
+      "message": "V4 sprint COMPLETE. All 7 tasks done and merged to master. Two bugs caught in review and fixed: activity id overwrite on edit (V4-3), isSameOrder population mismatch (V4-5)."
+    },
+    {
+      "time": "2026-02-25",
+      "agent": "claude-code",
+      "message": "V4 sprint started. 7 UX improvements: map layer toggles, wide day modal, click-to-edit, location bias, optimize feedback, find activities button, tooltip style."
+    },
+    {
+      "time": "2026-02-21",
+      "agent": "claude-code",
+      "message": "V3 sprint COMPLETE. Scout AI: chat, tips, optimize-day, recommend-activities, plan-day APIs + all UI components."
+    },
     {
       "time": "2026-02-18",
       "agent": "claude-code",
@@ -204,19 +224,22 @@
   ],
   "metrics": {
     "activeAgents": 1,
-    "pendingTasks": 10,
-    "completedTasks": 9,
-    "overallProgress": 47,
-    "currentPhase": "Phase 1: Core UX Gaps — Starting P1-T1 (dog badge)",
+    "pendingTasks": 3,
+    "completedTasks": 35,
+    "overallProgress": 92,
+    "currentPhase": "V5 Sprint — Activity Discovery Modal + bug fixes",
     "phases": {
       "foundation": { "name": "Foundation", "total": 6, "done": 6, "pct": 100 },
       "phase0_forms": { "name": "Phase 0 — Activity Form Foundations", "total": 3, "done": 3, "pct": 100 },
-      "phase1_ux": { "name": "Phase 1 — Core UX", "total": 3, "done": 0, "pct": 0 },
-      "phase2_import": { "name": "Phase 2 — Smart Import", "total": 4, "done": 0, "pct": 0 },
-      "phase3_intelligence": { "name": "Phase 3 — Intelligence", "total": 3, "done": 0, "pct": 0 }
+      "phase1_ux": { "name": "Phase 1 — Core UX", "total": 3, "done": 3, "pct": 100 },
+      "phase2_import": { "name": "Phase 2 — Smart Import", "total": 4, "done": 4, "pct": 100 },
+      "phase3_intelligence": { "name": "Phase 3 — Intelligence", "total": 3, "done": 3, "pct": 100 },
+      "v3_scout": { "name": "V3 — Scout Intelligence", "total": 9, "done": 9, "pct": 100 },
+      "v4_ux": { "name": "V4 — UX Improvements", "total": 7, "done": 7, "pct": 100 },
+      "v5_discovery": { "name": "V5 — Activity Discovery + Fixes", "total": 3, "done": 0, "pct": 0 }
     },
-    "nextUnblockedTasks": ["P1-T1", "P1-T2", "P2-T4", "P3-T8", "P3-T10"],
-    "planFile": "docs/plans/2026-02-18-option-c-hybrid.md",
+    "nextUnblockedTasks": ["V5-1", "V5-2", "V5-3"],
+    "planFile": "docs/plans/2026-02-27-activity-discovery-design.md",
     "backlogFile": "docs/BACKLOG.md"
   }
 }

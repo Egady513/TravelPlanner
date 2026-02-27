@@ -3,7 +3,7 @@
 > **Plan file:** `docs/plans/2026-02-18-option-c-hybrid.md`
 > **v2 Design doc:** `docs/plans/2026-02-18-v2-features-design.md`
 > **Dashboard:** `status.json`
-> **Last updated:** 2026-02-18
+> **Last updated:** 2026-02-27
 
 ---
 
@@ -12,6 +12,46 @@
 - Status: `🔲 pending` | `🔄 in progress` | `✅ done` | `🚫 blocked`
 - Assign tasks to subagents by setting the **Assigned** column
 - After completing a task, update status here AND in `status.json`
+
+---
+
+## V5 Sprint — Activity Discovery + Bug Fixes (Up Next)
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| V5-1 | Activity Discovery Modal — Yelp/Google Maps style | 🔲 pending | New `ActivityDiscoveryModal.tsx` + `/api/places/enrich` route. Cards-first with map toggle. Scout curates, Google Places enriches with photo/rating/hours. Design approved 2026-02-27. Design doc: `docs/plans/2026-02-27-activity-discovery-design.md` |
+| V5-2 | Dismissible validation warnings in DayDetailPanel | 🔲 pending | Add X button to each validation message in right column. Local dismiss state (session only). |
+| V5-3 | Fix Find Activities blank state | 🔲 pending | When Scout returns empty suggestions, panel goes blank with no way to change type. Show empty state + "← Change type" button. |
+
+---
+
+## V4 Sprint — UX Improvements — COMPLETE ✅
+
+| ID | Task | Status | Commits |
+|----|------|--------|---------|
+| V4-1 | Map layer per-type toggles (6 types w/ emoji) | ✅ done | `f458d8d` |
+| V4-2 | Day detail panel → wide overlay modal (two-column) | ✅ done | `cc718f5`, `cba5450` |
+| V4-3 | Click-to-edit activity with pre-filled form | ✅ done | `298d730`, `9c07644`, `b48178c` |
+| V4-4 | Places autocomplete location bias toward trip region | ✅ done | `f458d8d`, `bf3fc1d` |
+| V4-5 | Optimize Order — shows what changed or "already great" | ✅ done | `defbe4e`, `32d29c4` |
+| V4-6 | "🔍 Find Activities" button wired in day modal | ✅ done | part of `cc718f5` |
+| V4-7 | Drive time tooltip tighter styling | ✅ done | `68acb16` |
+
+---
+
+## V3 Sprint — Scout Intelligence — COMPLETE ✅
+
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| V3-1 | Scout chat streaming API | ✅ done | `/api/scout/chat` |
+| V3-2 | Scout proactive tips API | ✅ done | `/api/scout/tips` |
+| V3-3 | ScoutPanel chat drawer | ✅ done | `components/ScoutPanel.tsx` |
+| V3-4 | Scout tips in Sidebar | ✅ done | `components/Sidebar.tsx` |
+| V3-5 | Optimize day order API | ✅ done | `/api/scout/optimize-day` |
+| V3-6 | Optimize Order button + toast in DayDetailPanel | ✅ done | |
+| V3-7 | Recommend activities API | ✅ done | `/api/scout/recommend-activities` |
+| V3-8 | RecommendActivitiesPanel component | ✅ done | `components/RecommendActivitiesPanel.tsx` |
+| V3-9 | Plan Day API | ✅ done | `/api/scout/plan-day` |
 
 ---
 
