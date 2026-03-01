@@ -32,10 +32,19 @@ async function enrichOne(s: RawSuggestion, apiKey: string): Promise<EnrichedSugg
       { next: { revalidate: 3600 } } // cache for 1 hour
     );
     const data = await res.json() as PlacesTextSearchResponse;
+
+    // Check Places API status field (HTTP 200 is returned even for errors)
+    if (data.status && data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.warn(`places/enrich: Places API returned status ${data.status} for "${s.name}"`);
+      return { ...s, photoUrl: null, rating: null, googlePlaceId: null };
+    }
+
     const place = data.results?.[0];
     if (!place) return { ...s, photoUrl: null, rating: null, googlePlaceId: null };
 
     const photoRef = place.photos?.[0]?.photo_reference ?? null;
+    // Note: NEXT_PUBLIC_ key is already embedded in the client bundle,
+    // so including it in the photo URL is an acceptable tradeoff at this scale.
     const photoUrl = photoRef
       ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photoRef}&key=${apiKey}`
       : null;
