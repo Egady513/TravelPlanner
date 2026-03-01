@@ -52,8 +52,11 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<EnrichedSuggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
-  const [geocodingIds, setGeocodingIds] = useState<Set<number>>(new Set());
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [geocodingIds, setGeocodingIds] = useState<Set<string>>(new Set());
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const getSuggestionKey = (s: EnrichedSuggestion) => s.googlePlaceId ?? s.name;
 
   const handleTypeSelect = async (type: ActivityType) => {
     setSelectedType(type);
@@ -61,6 +64,7 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
     setError(null);
     setSuggestions([]);
     setAddedIds(new Set());
+    setAddError(null);
 
     try {
       // Step 1: Scout curates suggestions
@@ -84,6 +88,7 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suggestions: scoutData.suggestions }),
       });
+      if (!enrichRes.ok) throw new Error('Enrichment failed');
       const enrichData = await enrichRes.json() as { enriched: EnrichedSuggestion[] };
       setSuggestions(enrichData.enriched ?? []);
     } catch {
@@ -93,20 +98,22 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
     }
   };
 
-  const handleAdd = async (s: EnrichedSuggestion, index: number) => {
-    if (!trip || addedIds.has(index) || geocodingIds.has(index)) return;
+  const handleAdd = async (s: EnrichedSuggestion) => {
+    const key = getSuggestionKey(s);
+    if (!trip || addedIds.has(key) || geocodingIds.has(key)) return;
+    if (!selectedType) return;
 
-    setGeocodingIds(prev => new Set(prev).add(index));
+    setGeocodingIds(prev => new Set(prev).add(key));
     try {
       const coords = await geocodePlace(`${s.name}, ${s.location}`);
       if (!coords) {
-        setError('Could not locate this place. Try another suggestion.');
+        setAddError('Could not locate this place. Try another suggestion.');
         return;
       }
 
       const activity: Activity = {
         id: crypto.randomUUID(),
-        type: selectedType!,
+        type: selectedType,
         name: s.name,
         coordinates: coords,
         dayNumber: day.dayNumber,
@@ -118,9 +125,9 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
       } as Activity;
 
       addActivity(activity);
-      setAddedIds(prev => new Set(prev).add(index));
+      setAddedIds(prev => new Set(prev).add(key));
     } finally {
-      setGeocodingIds(prev => { const next = new Set(prev); next.delete(index); return next; });
+      setGeocodingIds(prev => { const next = new Set(prev); next.delete(key); return next; });
     }
   };
 
@@ -130,6 +137,7 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
     setError(null);
     setAddedIds(new Set());
     setGeocodingIds(new Set());
+    setAddError(null);
   };
 
   if (typeof window === 'undefined') return null;
@@ -227,9 +235,13 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
                 </button>
               </div>
 
+              {addError && (
+                <p className="text-xs text-red-500 mb-3">{addError}</p>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {suggestions.map((s, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                {suggestions.map((s) => (
+                  <div key={getSuggestionKey(s)} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
                     {/* Photo */}
                     <div className="h-40 bg-gray-100 flex-shrink-0 relative overflow-hidden">
                       <div className="w-full h-full flex items-center justify-center">
@@ -258,17 +270,17 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
                       {s.rating !== null && <StarRating rating={s.rating} />}
                       <p className="text-xs text-gray-600 mt-2 flex-1 leading-relaxed">{s.why}</p>
                       <button
-                        onClick={() => handleAdd(s, i)}
-                        disabled={addedIds.has(i) || geocodingIds.has(i)}
+                        onClick={() => handleAdd(s)}
+                        disabled={addedIds.has(getSuggestionKey(s)) || geocodingIds.has(getSuggestionKey(s))}
                         className={`mt-3 w-full text-sm py-2 px-3 rounded-lg font-medium transition-colors ${
-                          addedIds.has(i)
+                          addedIds.has(getSuggestionKey(s))
                             ? 'bg-green-100 text-green-700 cursor-default'
-                            : geocodingIds.has(i)
+                            : geocodingIds.has(getSuggestionKey(s))
                             ? 'bg-gray-100 text-gray-500 cursor-wait'
                             : 'bg-orange-500 text-white hover:bg-orange-600'
                         }`}
                       >
-                        {addedIds.has(i) ? '✓ Added to Day' : geocodingIds.has(i) ? 'Adding…' : '+ Add to Day'}
+                        {addedIds.has(getSuggestionKey(s)) ? '✓ Added to Day' : geocodingIds.has(getSuggestionKey(s)) ? 'Adding…' : '+ Add to Day'}
                       </button>
                     </div>
                   </div>
