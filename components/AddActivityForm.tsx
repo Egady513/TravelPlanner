@@ -45,7 +45,9 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
   const [estimatedDriveHours, setEstimatedDriveHours] = useState<number | null>(
     existingDrive?.estimatedDriveHours ?? null
   );
-  const [estimatedDriveDistance, setEstimatedDriveDistance] = useState<string>('');
+  const [estimatedDriveDistance, setEstimatedDriveDistance] = useState<string>(
+    existingDrive?.estimatedDriveDistance ?? ''
+  );
   const [isEstimatingDriveTime, setIsEstimatingDriveTime] = useState(false);
 
   // Camping-specific
@@ -205,7 +207,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         startLocation: driveStart,
         endLocation: driveEnd,
         estimatedDriveHours: estimatedDriveHours ?? undefined,
-        estimatedDriveDistance: estimatedDriveDistance || undefined,
+        estimatedDriveDistance: estimatedDriveDistance.trim() || undefined,
       } as DrivingActivity;
       if (existingActivity) {
         updateActivity(existingActivity.id, activity as Partial<Activity>);

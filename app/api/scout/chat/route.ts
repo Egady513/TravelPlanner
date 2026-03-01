@@ -1,5 +1,5 @@
 ﻿import Anthropic from '@anthropic-ai/sdk';
-import type { Trip } from '@/types';
+import type { Trip, DrivingActivity } from '@/types';
 import { loadScoutContext, saveScoutMessages } from '@/lib/supabase';
 
 const client = new Anthropic();
@@ -60,13 +60,13 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
 
   // Build a human-readable trip summary for Scout to reference
   const tripSummary = trip.days.map(day => {
-    const drives = day.activities.filter(a => a.type === 'driving');
+    const drives = day.activities.filter(a => a.type === 'driving') as DrivingActivity[];
     const driveInfo = drives.map(d => {
-      const drive2 = d as { startLocation?: { name: string }; endLocation?: { name: string }; estimatedDriveHours?: number; estimatedDriveDistance?: string };
-      const hrs = drive2.estimatedDriveHours ? ` (~${drive2.estimatedDriveHours}h` : '';
-      const dist = drive2.estimatedDriveDistance ? ` · ${drive2.estimatedDriveDistance}` : '';
-      const suffix = (hrs || dist) ? `${hrs}${dist})` : '';
-      return `${drive2.startLocation?.name ?? '?'} → ${drive2.endLocation?.name ?? '?'}${suffix}`;
+      const hrs = d.estimatedDriveHours ? `~${d.estimatedDriveHours}h` : '';
+      const dist = d.estimatedDriveDistance ?? '';
+      const details = [hrs, dist].filter(Boolean).join(' · ');
+      const suffix = details ? ` (${details})` : '';
+      return `${d.startLocation.name} → ${d.endLocation.name}${suffix}`;
     }).join(', ');
     const activities = day.activities.filter(a => a.type !== 'driving').map(a => a.name).join(', ');
     return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}`;
