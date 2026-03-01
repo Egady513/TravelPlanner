@@ -124,6 +124,7 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
         } as Partial<CampingSpot> : {}),
       } as Activity;
 
+      setAddError(null);
       addActivity(activity);
       setAddedIds(prev => new Set(prev).add(key));
     } finally {
