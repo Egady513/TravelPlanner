@@ -12,6 +12,7 @@ import ImportItinerary from "@/components/ImportItinerary";
 import TopNav from "@/components/TopNav";
 import ScoutPanel from "@/components/ScoutPanel";
 import DashboardModal from "@/components/DashboardModal";
+import PreferencesModal from "@/components/PreferencesModal";
 
 export default function Home() {
   const { trip, setTrip } = useTrip();
@@ -19,6 +20,7 @@ export default function Home() {
   const [showImport, setShowImport] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showScout, setShowScout] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
 
   const handleWizardComplete = (wizardData: Record<string, unknown>) => {
     // Parse as local dates so 6/2 stays 6/2 (not UTC which can become 6/1)
@@ -77,6 +79,7 @@ export default function Home() {
           onImport={() => setShowImport(true)}
           onDashboard={() => setShowDashboard(true)}
           onScout={() => setShowScout(prev => !prev)}
+          onPreferences={() => setShowPreferences(true)}
         />
         <main className="flex-1 flex overflow-hidden">
           <Sidebar />
@@ -87,6 +90,7 @@ export default function Home() {
         <ImportItinerary isOpen={showImport} onClose={() => setShowImport(false)} />
         <ScoutPanel isOpen={showScout} onClose={() => setShowScout(false)} />
         {showDashboard && <DashboardModal onClose={() => setShowDashboard(false)} />}
+        {showPreferences && <PreferencesModal onClose={() => setShowPreferences(false)} />}
       </div>
     );
   }

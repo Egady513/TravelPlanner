@@ -1,5 +1,5 @@
 ﻿import Anthropic from '@anthropic-ai/sdk';
-import type { Trip, DrivingActivity } from '@/types';
+import type { Trip, DrivingActivity, TripPreferences } from '@/types';
 import { loadScoutContext, saveScoutMessages } from '@/lib/supabase';
 
 const client = new Anthropic();
@@ -98,6 +98,27 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
     return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}${totalDriveNote}`;
   }).join('\n');
 
+  const INTEREST_LABELS: { key: keyof Omit<TripPreferences, 'customInterests'>; label: string }[] = [
+    { key: 'hiking', label: 'Hiking & Trails' },
+    { key: 'museums', label: 'Museums & History' },
+    { key: 'wineries', label: 'Wineries & Breweries' },
+    { key: 'shopping', label: 'Shopping' },
+    { key: 'restaurants', label: 'Food & Dining' },
+    { key: 'outdoorAdventure', label: 'Outdoor Adventure' },
+  ];
+
+  const prefsSection = trip.preferences
+    ? `
+USER INTERESTS (personalize recommendations to match):
+${INTEREST_LABELS
+  .filter(f => (trip.preferences![f.key as keyof Omit<TripPreferences, 'customInterests'>] as number) > 0)
+  .map(f => {
+    const rating = trip.preferences![f.key as keyof Omit<TripPreferences, 'customInterests'>] as number;
+    return `- ${f.label}: ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`;
+  })
+  .join('\n')}${trip.preferences.customInterests?.length ? `\n- Also enjoys: ${trip.preferences.customInterests.join(', ')}` : ''}`
+    : '';
+
   return `You are Scout 🐾 — a warm, sharp road trip co-pilot. You talk like a knowledgeable friend who's done a lot of road trips, not a chatbot. Use plain language. Reference specific days, names, and locations from the plan. Use emoji sparingly — only where it adds clarity (🚗 for drives, ⚠️ for warnings, ✅ for good stuff).
 
 RESPONSE STYLE — STRICT:
@@ -113,7 +134,7 @@ DRIVING WARNING RULE: When a day's total drive time (shown in brackets as "[Xh d
 
 USER PREFERENCES:
 - Max driving/day: ${trip.maxDrivingHours}h | Pace: ${trip.tripPace} | Dog: ${trip.hasDog ? 'yes 🐕' : 'no'} | Budget: ${trip.budgetStyle} | Lodging: ${trip.lodgingPreferences?.join(', ') || 'flexible'} | People: ${trip.peopleCount}
-
+${prefsSection}
 TRIP AT A GLANCE:
 ${tripSummary}
 

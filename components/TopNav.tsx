@@ -6,9 +6,10 @@ interface TopNavProps {
   onImport: () => void;
   onDashboard: () => void;
   onScout: () => void;
+  onPreferences?: () => void;
 }
 
-export default function TopNav({ onImport, onDashboard, onScout }: TopNavProps) {
+export default function TopNav({ onImport, onDashboard, onScout, onPreferences }: TopNavProps) {
   const { trip, clearTrip, isSaving } = useTrip();
 
   const handleHome = () => {
@@ -39,6 +40,14 @@ export default function TopNav({ onImport, onDashboard, onScout }: TopNavProps) 
         >
           🐕 Scout
         </button>
+        {onPreferences && (
+          <button
+            onClick={onPreferences}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            ⭐ Interests
+          </button>
+        )}
         <button
           onClick={onImport}
           className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"

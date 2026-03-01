@@ -132,6 +132,16 @@ export interface MustHave {
   type: MustHaveType;
 }
 
+export interface TripPreferences {
+  hiking: number;      // 1-5 (0 = not rated)
+  museums: number;     // 1-5
+  wineries: number;    // 1-5
+  shopping: number;    // 1-5
+  restaurants: number; // 1-5
+  outdoorAdventure: number; // 1-5
+  customInterests: string[]; // e.g., ["crossfit", "craft beer"]
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -165,6 +175,9 @@ export interface Trip {
 
   // Step 6: Must-Haves
   mustHaves: MustHave[];
+
+  // User interest preferences
+  preferences?: TripPreferences;
 
   // Metadata
   thumbnailUrl?: string;

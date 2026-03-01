@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
-import { Trip, Activity, WeatherData, Day } from '@/types';
+import { Trip, Activity, WeatherData, Day, TripPreferences } from '@/types';
 import { storage } from './storage';
 import { validateTrip } from './validation';
 import { logRemovedItemToDb, saveScoutAction } from './supabase';
@@ -29,6 +29,7 @@ interface TripContextType {
   logRemovedItem: (itemType: 'activity' | 'day' | 'lodging', name: string, reason?: string) => void;
   applyRouteChange: (payload: RouteChangePayload) => void;
   addDay: () => void;
+  updatePreferences: (prefs: Partial<TripPreferences>) => void;
 }
 
 const TripContext = createContext<TripContextType | undefined>(undefined);
@@ -228,13 +229,32 @@ export function TripProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updatePreferences = useCallback((prefs: Partial<TripPreferences>) => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      const updated: Trip = {
+        ...prev,
+        preferences: {
+          hiking: prefs.hiking ?? prev.preferences?.hiking ?? 0,
+          museums: prefs.museums ?? prev.preferences?.museums ?? 0,
+          wineries: prefs.wineries ?? prev.preferences?.wineries ?? 0,
+          shopping: prefs.shopping ?? prev.preferences?.shopping ?? 0,
+          restaurants: prefs.restaurants ?? prev.preferences?.restaurants ?? 0,
+          outdoorAdventure: prefs.outdoorAdventure ?? prev.preferences?.outdoorAdventure ?? 0,
+          customInterests: prefs.customInterests ?? prev.preferences?.customInterests ?? [],
+        },
+      };
+      return updated;
+    });
+  }, []);
+
   return (
     <TripContext.Provider
       value={{
         trip, setTrip, addActivity, removeActivity, updateActivity,
         reorderActivities, setDayWeather, clearTrip,
         selectedDay, setSelectedDay, isSaving,
-        logRemovedItem, applyRouteChange, addDay,
+        logRemovedItem, applyRouteChange, addDay, updatePreferences,
       }}
     >
       {children}
