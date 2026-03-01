@@ -284,7 +284,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Row: Type + Dog Friendly */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Activity Type
@@ -572,7 +572,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         )}
 
         {/* Row: Notes + Day Assignment */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Notes (optional)
