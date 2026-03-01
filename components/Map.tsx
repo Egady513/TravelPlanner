@@ -479,15 +479,28 @@ export default function TripMap(props: MapProps = {}) {
                 <>
                   <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Layers</p>
 
+                  <div className="flex gap-1 mb-2">
+                    <button
+                      onClick={() => setVisibleTypes(new Set(['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving'] as ActivityType[]))}
+                      className="text-xs text-blue-600 hover:text-blue-800 px-1.5 py-0.5 rounded border border-blue-200 hover:bg-blue-50 transition-colors"
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setVisibleTypes(new Set<ActivityType>())}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-1.5 py-0.5 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      None
+                    </button>
+                  </div>
+
                   {(
                     [
-                      { type: 'trail', label: 'Trail', emoji: '🥾' },
-                      { type: 'hotel', label: 'Hotel', emoji: '🏨' },
-                      { type: 'restaurant', label: 'Restaurant', emoji: '🍽️' },
-                      { type: 'camping', label: 'Camping', emoji: '⛺' },
-                      { type: 'park', label: 'Park', emoji: '🏞️' },
-                      { type: 'driving', label: 'Driving', emoji: '🚗' },
-                    ] as { type: ActivityType; label: string; emoji: string }[]
+                      { type: 'trail' as ActivityType, label: 'Trail', emoji: '🥾' },
+                      { type: 'restaurant' as ActivityType, label: 'Restaurant', emoji: '🍽️' },
+                      { type: 'park' as ActivityType, label: 'Park', emoji: '🏞️' },
+                      { type: 'driving' as ActivityType, label: 'Driving', emoji: '🚗' },
+                    ]
                   ).map(({ type, label, emoji }) => (
                     <label key={type} className="flex items-center gap-2 cursor-pointer mb-1">
                       <input
@@ -501,9 +514,48 @@ export default function TripMap(props: MapProps = {}) {
                           });
                         }}
                       />
-                      <span>{emoji} {label}</span>
+                      <span className="text-sm">{emoji} {label}</span>
                     </label>
                   ))}
+
+                  {/* Lodging group toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer mb-1">
+                    <input
+                      type="checkbox"
+                      checked={visibleTypes.has('hotel') || visibleTypes.has('camping')}
+                      ref={el => {
+                        if (el) el.indeterminate = visibleTypes.has('hotel') !== visibleTypes.has('camping');
+                      }}
+                      onChange={e => {
+                        setVisibleTypes(prev => {
+                          const next = new Set(prev);
+                          if (e.target.checked) { next.add('hotel'); next.add('camping'); }
+                          else { next.delete('hotel'); next.delete('camping'); }
+                          return next;
+                        });
+                      }}
+                    />
+                    <span className="text-sm">🏠 Lodging</span>
+                  </label>
+                  {/* Individual hotel/camping sub-checkboxes */}
+                  <div className="ml-4">
+                    {([{ type: 'hotel' as ActivityType, label: 'Hotel', emoji: '🏨' }, { type: 'camping' as ActivityType, label: 'Camping', emoji: '⛺' }]).map(({ type, label, emoji }) => (
+                      <label key={type} className="flex items-center gap-2 cursor-pointer mb-1">
+                        <input
+                          type="checkbox"
+                          checked={visibleTypes.has(type)}
+                          onChange={e => {
+                            setVisibleTypes(prev => {
+                              const next = new Set(prev);
+                              if (e.target.checked) { next.add(type); } else { next.delete(type); }
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="text-xs text-gray-600">{emoji} {label}</span>
+                      </label>
+                    ))}
+                  </div>
 
                   <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide border-t pt-2">Days</p>
 
