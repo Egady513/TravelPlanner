@@ -61,6 +61,7 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
   // Build a human-readable trip summary for Scout to reference
   const tripSummary = trip.days.map(day => {
     const drives = day.activities.filter(a => a.type === 'driving') as DrivingActivity[];
+    const totalDriveHours = drives.reduce((sum, d) => sum + (d.estimatedDriveHours ?? 0), 0);
     const driveInfo = drives.map(d => {
       const hrs = d.estimatedDriveHours ? `~${d.estimatedDriveHours}h` : '';
       const dist = d.estimatedDriveDistance ?? '';
@@ -69,7 +70,8 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
       return `${d.startLocation.name} → ${d.endLocation.name}${suffix}`;
     }).join(', ');
     const activities = day.activities.filter(a => a.type !== 'driving').map(a => a.name).join(', ');
-    return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}`;
+    const totalDriveNote = totalDriveHours > 0 ? ` [${totalDriveHours.toFixed(1)}h driving total]` : '';
+    return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}${totalDriveNote}`;
   }).join('\n');
 
   return `You are Scout 🐾 — a warm, sharp road trip co-pilot. You talk like a knowledgeable friend who's done a lot of road trips, not a chatbot. Use plain language. Reference specific days, names, and locations from the plan. Use emoji sparingly — only where it adds clarity (🚗 for drives, ⚠️ for warnings, ✅ for good stuff).
@@ -83,6 +85,7 @@ RESPONSE STYLE — STRICT:
 - When you notice a problem, name it clearly: "⚠️ [problem]. Want me to fix it?"
 
 ROUTE CHANGE RULE: If a drive in the plan exceeds ${trip.maxDrivingHours}h (the user's max), you MUST proactively call suggest_route_change to offer a concrete split — even if the user didn't ask. Write 1–2 sentences explaining why first, then call the tool.
+DRIVING WARNING RULE: When a day's total drive time (shown in brackets as "[Xh driving total]") is >= ${Math.round(trip.maxDrivingHours * 0.75 * 10) / 10}h, proactively warn in your response before making suggestions for that day.
 
 USER PREFERENCES:
 - Max driving/day: ${trip.maxDrivingHours}h | Pace: ${trip.tripPace} | Dog: ${trip.hasDog ? 'yes 🐕' : 'no'} | Budget: ${trip.budgetStyle} | Lodging: ${trip.lodgingPreferences?.join(', ') || 'flexible'} | People: ${trip.peopleCount}
