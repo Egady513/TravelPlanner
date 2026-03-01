@@ -271,8 +271,8 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
             {day.validationStatus.messages
               .filter(m => m.level !== 'success' && !dismissedWarnings.has(m.message))
               .map((msg, i) => (
-                <div key={i} className="relative">
-                  <div className={`text-xs px-2 py-1 pr-6 rounded-full font-medium ${getValidationColor(msg.level)}`}>
+                <div key={msg.message}>
+                  <div className={`relative text-xs px-2 py-1 pr-6 rounded-full font-medium ${getValidationColor(msg.level)}`}>
                     {getValidationEmoji(msg.level)} {msg.message}
                     <button
                       onClick={() => dismissWarning(msg.message)}
