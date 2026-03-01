@@ -205,6 +205,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         startLocation: driveStart,
         endLocation: driveEnd,
         estimatedDriveHours: estimatedDriveHours ?? undefined,
+        estimatedDriveDistance: estimatedDriveDistance || undefined,
       } as DrivingActivity;
       if (existingActivity) {
         updateActivity(existingActivity.id, activity as Partial<Activity>);

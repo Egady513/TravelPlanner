@@ -86,6 +86,7 @@ export interface DrivingActivity extends Activity {
     coordinates: Coordinates;
   };
   estimatedDriveHours?: number;
+  estimatedDriveDistance?: string; // e.g. "143 mi"
 }
 
 export interface Day {

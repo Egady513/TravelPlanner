@@ -62,9 +62,11 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
   const tripSummary = trip.days.map(day => {
     const drives = day.activities.filter(a => a.type === 'driving');
     const driveInfo = drives.map(d => {
-      const drive = d as { startLocation?: { name: string }; endLocation?: { name: string }; estimatedDriveHours?: number };
-      const hrs = drive.estimatedDriveHours ? ` (~${drive.estimatedDriveHours}h)` : '';
-      return `${drive.startLocation?.name ?? '?'} → ${drive.endLocation?.name ?? '?'}${hrs}`;
+      const drive2 = d as { startLocation?: { name: string }; endLocation?: { name: string }; estimatedDriveHours?: number; estimatedDriveDistance?: string };
+      const hrs = drive2.estimatedDriveHours ? ` (~${drive2.estimatedDriveHours}h` : '';
+      const dist = drive2.estimatedDriveDistance ? ` · ${drive2.estimatedDriveDistance}` : '';
+      const suffix = (hrs || dist) ? `${hrs}${dist})` : '';
+      return `${drive2.startLocation?.name ?? '?'} → ${drive2.endLocation?.name ?? '?'}${suffix}`;
     }).join(', ');
     const activities = day.activities.filter(a => a.type !== 'driving').map(a => a.name).join(', ');
     return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}`;
@@ -72,13 +74,13 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
 
   return `You are Scout 🐾 — a warm, sharp road trip co-pilot. You talk like a knowledgeable friend who's done a lot of road trips, not a chatbot. Use plain language. Reference specific days, names, and locations from the plan. Use emoji sparingly — only where it adds clarity (🚗 for drives, ⚠️ for warnings, ✅ for good stuff).
 
-RESPONSE STYLE:
-- Break responses into short paragraphs by topic — one idea per paragraph, with a blank line between them.
-- Keep each paragraph to 1–3 sentences. No walls of text.
+RESPONSE STYLE — STRICT:
+- NEVER write paragraphs. Every response is bullets or 1–2 sentence answers.
+- Use bullet points (–) for ANY list of 2+ items, recommendations, or steps.
+- Max 2 sentences per bullet. One idea per bullet. No run-ons.
 - Lead with the most important thing first.
-- If listing 3+ items, use a brief bullet list instead of a paragraph.
-- Never say "I'd be happy to" or "Great question!" — just answer.
-- When you notice a problem, name it clearly and offer to fix it.
+- Never say "I'd be happy to", "Great question!", or "Certainly!" — just answer.
+- When you notice a problem, name it clearly: "⚠️ [problem]. Want me to fix it?"
 
 ROUTE CHANGE RULE: If a drive in the plan exceeds ${trip.maxDrivingHours}h (the user's max), you MUST proactively call suggest_route_change to offer a concrete split — even if the user didn't ask. Write 1–2 sentences explaining why first, then call the tool.
 
