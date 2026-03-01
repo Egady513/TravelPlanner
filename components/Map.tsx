@@ -23,6 +23,8 @@ const markerColors: Record<ActivityType, string> = {
   driving: '#6b7280', // gray
 };
 
+const ALL_TYPES = Object.keys(markerColors) as ActivityType[];
+
 const activityEmojis: Record<ActivityType, string> = {
   trail: '🥾',
   hotel: '🏨',
@@ -98,6 +100,9 @@ export default function TripMap(props: MapProps = {}) {
 
   // Legend/filter panel collapsed state
   const [legendOpen, setLegendOpen] = useState(true);
+
+  // Lodging group checkbox ref (for indeterminate state)
+  const lodgingCheckboxRef = useRef<HTMLInputElement>(null);
 
   // Markers
   const markersRef = useRef<Map<string, google.maps.marker.AdvancedMarkerElement>>(new Map());
@@ -427,6 +432,14 @@ export default function TripMap(props: MapProps = {}) {
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
 
+  // Sync lodging group checkbox indeterminate state
+  useEffect(() => {
+    if (lodgingCheckboxRef.current) {
+      lodgingCheckboxRef.current.indeterminate =
+        visibleTypes.has('hotel') !== visibleTypes.has('camping');
+    }
+  }, [visibleTypes]);
+
   // Fit map to selected day's activities when selectedDay changes
   useEffect(() => {
     if (!map || !trip || !selectedDay) return;
@@ -481,7 +494,7 @@ export default function TripMap(props: MapProps = {}) {
 
                   <div className="flex gap-1 mb-2">
                     <button
-                      onClick={() => setVisibleTypes(new Set(['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving'] as ActivityType[]))}
+                      onClick={() => setVisibleTypes(new Set(ALL_TYPES))}
                       className="text-xs text-blue-600 hover:text-blue-800 px-1.5 py-0.5 rounded border border-blue-200 hover:bg-blue-50 transition-colors"
                     >
                       All
@@ -523,9 +536,7 @@ export default function TripMap(props: MapProps = {}) {
                     <input
                       type="checkbox"
                       checked={visibleTypes.has('hotel') || visibleTypes.has('camping')}
-                      ref={el => {
-                        if (el) el.indeterminate = visibleTypes.has('hotel') !== visibleTypes.has('camping');
-                      }}
+                      ref={lodgingCheckboxRef}
                       onChange={e => {
                         setVisibleTypes(prev => {
                           const next = new Set(prev);
