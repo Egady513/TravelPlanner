@@ -36,6 +36,11 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
   const [optimizeReason, setOptimizeReason] = useState<string | null>(null);
   const [showRecommend, setShowRecommend] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
+
+  const dismissWarning = (message: string) => {
+    setDismissedWarnings(prev => new Set(prev).add(message));
+  };
 
   const formatDate = (date?: Date | string) => {
     if (!date) return '';
@@ -263,16 +268,25 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
             )}
 
             {/* Validation messages */}
-            {day.validationStatus.messages.filter(m => m.level !== 'success').map((msg, i) => (
-              <div key={i}>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${getValidationColor(msg.level)}`}>
-                  {getValidationEmoji(msg.level)} {msg.message}
-                </span>
-                {msg.suggestion && (
-                  <p className="text-xs text-gray-500 mt-0.5 pl-1">{msg.suggestion}</p>
-                )}
-              </div>
-            ))}
+            {day.validationStatus.messages
+              .filter(m => m.level !== 'success' && !dismissedWarnings.has(m.message))
+              .map((msg, i) => (
+                <div key={i} className="relative">
+                  <div className={`text-xs px-2 py-1 pr-6 rounded-full font-medium ${getValidationColor(msg.level)}`}>
+                    {getValidationEmoji(msg.level)} {msg.message}
+                    <button
+                      onClick={() => dismissWarning(msg.message)}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-current opacity-50 hover:opacity-100 leading-none"
+                      aria-label="Dismiss warning"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {msg.suggestion && (
+                    <p className="text-xs text-gray-500 mt-0.5 pl-1">{msg.suggestion}</p>
+                  )}
+                </div>
+              ))}
 
             {/* Optimize */}
             {day.activities.filter(a => !a.isContinuingStay).length >= 2 && (
