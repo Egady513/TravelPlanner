@@ -125,11 +125,6 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
 
   return (
     <>
-      {/* Backdrop */}
-      {isOpen && (
-        <div className="fixed inset-0 z-40" onClick={onClose} />
-      )}
-
       {/* Drawer */}
       <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full invisible'}`}>
         {/* Header */}
