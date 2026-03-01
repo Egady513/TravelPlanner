@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useTrip } from '@/lib/store';
 import type { RouteChangePayload } from '@/lib/store';
 import { loadScoutMessages } from '@/lib/supabase';
+import { geocodePlace } from '@/lib/geocoding';
+import type { Activity, ActivityType, CampingSpot } from '@/types';
 import RouteChangeModal from './RouteChangeModal';
 
 interface ScoutPanelProps {
@@ -12,12 +14,25 @@ interface ScoutPanelProps {
 }
 
 export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
-  const { trip } = useTrip();
+  const { trip, addActivity } = useTrip();
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingSuggestion, setPendingSuggestion] = useState<RouteChangePayload | null>(null);
   const [showRouteModal, setShowRouteModal] = useState(false);
+
+  interface ActivitySuggestion {
+    dayNumber: number;
+    type: ActivityType;
+    name: string;
+    location: string;
+    why: string;
+    isDogFriendly: boolean;
+  }
+  const [activitySuggestion, setActivitySuggestion] = useState<ActivitySuggestion | null>(null);
+  const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [activityAdded, setActivityAdded] = useState(false);
+
   const historyLoaded = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -92,6 +107,11 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
                 setPendingSuggestion(parsed.payload);
                 continue;
               }
+              if (parsed.type === 'activity_suggestion' && parsed.payload) {
+                setActivitySuggestion(parsed.payload as unknown as ActivitySuggestion);
+                setActivityAdded(false);
+                continue;
+              }
               const chunk = parsed.text ?? parsed.error ?? '';
               if (chunk) {
                 setMessages(prev => {
@@ -120,6 +140,32 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
       });
     } finally {
       setIsStreaming(false);
+    }
+  };
+
+  const handleAddSuggestedActivity = async () => {
+    if (!activitySuggestion || !trip || isAddingActivity) return;
+    setIsAddingActivity(true);
+    try {
+      const coords = await geocodePlace(`${activitySuggestion.name}, ${activitySuggestion.location}`);
+      if (!coords) { setIsAddingActivity(false); return; }
+      const activity: Activity = {
+        id: crypto.randomUUID(),
+        type: activitySuggestion.type,
+        name: activitySuggestion.name,
+        coordinates: coords,
+        dayNumber: activitySuggestion.dayNumber,
+        isDogFriendly: activitySuggestion.isDogFriendly,
+        notes: activitySuggestion.why,
+        ...(activitySuggestion.type === 'camping' ? {
+          amenities: { free: false, fireRing: false, cellCoverage: false, water: false },
+        } as Partial<CampingSpot> : {}),
+      } as Activity;
+      addActivity(activity);
+      setActivityAdded(true);
+      setTimeout(() => { setActivitySuggestion(null); setActivityAdded(false); }, 2000);
+    } finally {
+      setIsAddingActivity(false);
     }
   };
 
@@ -168,6 +214,31 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
               </button>
               <button onClick={() => setPendingSuggestion(null)}
                 className="flex-1 bg-white text-gray-600 text-xs py-1.5 rounded-md border border-gray-300 hover:bg-gray-50">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Activity Suggestion Card */}
+        {activitySuggestion && (
+          <div className="mx-3 mb-2 border border-green-200 rounded-lg bg-green-50 p-3">
+            <p className="text-xs font-semibold text-green-800 mb-0.5">
+              ➕ Day {activitySuggestion.dayNumber}: {activitySuggestion.name}
+            </p>
+            <p className="text-xs text-green-700 mb-2">{activitySuggestion.why}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddSuggestedActivity}
+                disabled={isAddingActivity || activityAdded}
+                className="flex-1 bg-green-600 text-white text-xs py-1.5 rounded-md hover:bg-green-700 disabled:opacity-60"
+              >
+                {activityAdded ? '✓ Added!' : isAddingActivity ? 'Adding…' : `+ Add to Day ${activitySuggestion.dayNumber}`}
+              </button>
+              <button
+                onClick={() => setActivitySuggestion(null)}
+                className="flex-1 bg-white text-gray-600 text-xs py-1.5 rounded-md border border-gray-300 hover:bg-gray-50"
+              >
                 Dismiss
               </button>
             </div>

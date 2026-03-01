@@ -39,6 +39,30 @@ const SUGGEST_ROUTE_CHANGE_TOOL: Anthropic.Tool = {
   },
 };
 
+const SUGGEST_ADD_ACTIVITY_TOOL: Anthropic.Tool = {
+  name: 'suggest_add_activity',
+  description:
+    'Suggest adding a specific, real activity to a specific day when the user asks for recommendations or when a day is sparse. ' +
+    'Only call with a real, specific place name (not generic descriptions). ' +
+    'Call at most once per response.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      dayNumber: { type: 'number', description: 'Day number to add this activity to' },
+      type: {
+        type: 'string',
+        enum: ['trail', 'hotel', 'restaurant', 'camping', 'park'],
+        description: 'Activity type',
+      },
+      name: { type: 'string', description: 'Exact name of the place (e.g. "Angels Landing Trail")' },
+      location: { type: 'string', description: 'City, State for geocoding (e.g. "Springdale, UT")' },
+      why: { type: 'string', description: 'One sentence why this fits the trip' },
+      isDogFriendly: { type: 'boolean' },
+    },
+    required: ['dayNumber', 'type', 'name', 'location', 'why', 'isDogFriendly'],
+  },
+};
+
 function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadScoutContext>>): string {
   const removedSection = context.removedItems.length > 0
     ? `\nPREVIOUSLY REMOVED ITEMS (do NOT re-suggest these):\n${context.removedItems
@@ -155,7 +179,7 @@ export async function POST(request: Request) {
           model: 'claude-sonnet-4-6',
           max_tokens: 4096,
           system: systemPrompt,
-          tools: [SUGGEST_ROUTE_CHANGE_TOOL],
+          tools: [SUGGEST_ROUTE_CHANGE_TOOL, SUGGEST_ADD_ACTIVITY_TOOL],
           messages: allMessages,
         });
 
@@ -168,6 +192,15 @@ export async function POST(request: Request) {
           for (const block of msg.content) {
             if (block.type === 'tool_use' && block.name === 'suggest_route_change') {
               routeSuggestionPayload = block.input;
+            }
+            if (block.type === 'tool_use' && block.name === 'suggest_add_activity') {
+              if (!closed) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'activity_suggestion', payload: block.input })}\n\n`
+                  )
+                );
+              }
             }
           }
 
