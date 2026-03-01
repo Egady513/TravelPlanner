@@ -34,7 +34,7 @@ interface ImportItineraryProps {
 }
 
 export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProps) {
-  const { setTrip } = useTrip();
+  const { trip, setTrip } = useTrip();
   const [text, setText] = useState('');
   const [step, setStep] = useState<'input' | 'parsing' | 'preview' | 'geocoding' | 'confirm'>('input');
   const [parsed, setParsed] = useState<ImportResponse | null>(null);
@@ -98,25 +98,27 @@ export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProp
       })
     );
 
-    const newTrip: Trip = {
-      id: crypto.randomUUID(),
-      name: parsed.tripName,
-      startDate: parseLocalDate(parsed.startDate),
-      endDate: parseLocalDate(parsed.endDate),
-      days,
-      hasDog: parsed.hasDog,
-      isLoopTrip: false,
-      peopleCount: 2,
-      tripPace: 'balanced',
-      maxDrivingHours: 6,
-      drivingPreference: 'flexible',
-      planningStyle: 'existing',
-      lodgingPreferences: [],
-      isNewCamper: false,
-      budgetStyle: 'midrange',
-      splurgeNights: 0,
-      mustHaves: [],
-    };
+    const newTrip: Trip = trip
+      ? { ...trip, days }
+      : {
+          id: crypto.randomUUID(),
+          name: parsed.tripName,
+          startDate: parseLocalDate(parsed.startDate),
+          endDate: parseLocalDate(parsed.endDate),
+          days,
+          hasDog: parsed.hasDog,
+          isLoopTrip: false,
+          peopleCount: 2,
+          tripPace: 'balanced',
+          maxDrivingHours: 6,
+          drivingPreference: 'flexible',
+          planningStyle: 'existing',
+          lodgingPreferences: [],
+          isNewCamper: false,
+          budgetStyle: 'midrange',
+          splurgeNights: 0,
+          mustHaves: [],
+        };
 
     setParsedTrip(newTrip);
     setStep('confirm');
@@ -243,10 +245,11 @@ export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProp
           {step === 'confirm' && parsedTrip && (
             <div className="space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="font-semibold text-green-800 mb-2">Found your trip!</p>
-                <p className="text-sm text-green-700">{parsedTrip.name}</p>
+                <p className="font-semibold text-green-800 mb-2">{trip ? 'Ready to import!' : 'Found your trip!'}</p>
+                <p className="text-sm text-green-700">{trip ? `Importing into: ${trip.name}` : parsedTrip.name}</p>
                 <p className="text-sm text-green-600">
                   {parsedTrip.days.length} days &middot; {parsedTrip.days.flatMap(d => d.activities).length} activities
+                  {trip ? ' will replace current itinerary days' : ''}
                 </p>
               </div>
               <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -262,7 +265,7 @@ export default function ImportItinerary({ isOpen, onClose }: ImportItineraryProp
                   onClick={() => { setTrip(parsedTrip); onClose(); }}
                   className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-orange-600"
                 >
-                  Use This Trip
+                  {trip ? 'Import into Trip' : 'Use This Trip'}
                 </button>
                 <button
                   onClick={() => { setStep('input'); setParsedTrip(null); setParsed(null); }}
