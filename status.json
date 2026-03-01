@@ -6,11 +6,16 @@
       "role": "Lead Developer / PM",
       "model": "claude-sonnet-4-6",
       "status": "active",
-      "currentTask": "V5 Sprint — Activity Discovery Modal + bug fixes",
-      "lastActive": "2026-02-27"
+      "currentTask": "V6 Sprint — Map Routes, Scout Polish, Preference Profile",
+      "lastActive": "2026-03-01"
     }
   ],
   "logs": [
+    {
+      "time": "2026-03-01",
+      "agent": "claude-code",
+      "message": "V5 sprint COMPLETE. ActivityDiscoveryModal (max-w-5xl, Scout + Google Places enrichment, photo cards), dismissible validation warnings, blank state fix. V6 sprint queued: map routes, Scout polish, preference profile."
+    },
     {
       "time": "2026-02-27",
       "agent": "claude-code",
@@ -236,10 +241,11 @@
       "phase3_intelligence": { "name": "Phase 3 — Intelligence", "total": 3, "done": 3, "pct": 100 },
       "v3_scout": { "name": "V3 — Scout Intelligence", "total": 9, "done": 9, "pct": 100 },
       "v4_ux": { "name": "V4 — UX Improvements", "total": 7, "done": 7, "pct": 100 },
-      "v5_discovery": { "name": "V5 — Activity Discovery + Fixes", "total": 3, "done": 0, "pct": 0 }
+      "v5_discovery": { "name": "V5 — Activity Discovery + Fixes", "total": 3, "done": 3, "pct": 100 },
+      "v6_polish": { "name": "V6 — Map Routes, Scout Polish, Preference Profile", "total": 8, "done": 0, "pct": 0 }
     },
-    "nextUnblockedTasks": ["V5-1", "V5-2", "V5-3"],
-    "planFile": "docs/plans/2026-02-27-activity-discovery-design.md",
+    "nextUnblockedTasks": ["V6-1", "V6-2", "V6-3", "V6-4", "V6-5", "V6-6", "V6-7", "V6-8"],
+    "planFile": "docs/plans/2026-02-28-v5-activity-discovery.md",
     "backlogFile": "docs/BACKLOG.md"
   }
 }

@@ -15,13 +15,28 @@
 
 ---
 
-## V5 Sprint — Activity Discovery + Bug Fixes (Up Next)
+## V6 Sprint — Map Routes, Scout Polish, Preference Profile (Up Next)
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| V5-1 | Activity Discovery Modal — Yelp/Google Maps style | 🔲 pending | New `ActivityDiscoveryModal.tsx` + `/api/places/enrich` route. Cards-first with map toggle. Scout curates, Google Places enriches with photo/rating/hours. Design approved 2026-02-27. Design doc: `docs/plans/2026-02-27-activity-discovery-design.md` |
-| V5-2 | Dismissible validation warnings in DayDetailPanel | 🔲 pending | Add X button to each validation message in right column. Local dismiss state (session only). |
-| V5-3 | Fix Find Activities blank state | 🔲 pending | When Scout returns empty suggestions, panel goes blank with no way to change type. Show empty state + "← Change type" button. |
+| V6-1 | Map layers: lodging type + select/deselect all | 🔲 pending | Show hotel/camping pin in layers panel. Add "Select All" and "Deselect All" buttons to layer toggles. `components/Map.tsx` |
+| V6-2 | Map: drive routes between activities with hover | 🔲 pending | Draw polyline between consecutive activities in day order. Hover shows drive time + start/end location names. Based on activity order from day planner. `components/Map.tsx`, Distance Matrix API |
+| V6-3 | Add Activity form: wider / more screen space | 🔲 pending | The AddActivityForm should use more of the screen (match V4 wide modal style). `components/AddActivityForm.tsx` |
+| V6-4 | Scout: add activities to itinerary from chat | 🔲 pending | Scout should be able to suggest & add activities via chat (tool use or structured response). |
+| V6-5 | Scout: fix wrong distance in chat + bullet formatting | 🔲 pending | Bug: Scout reports wrong drive distance in chat. Also: force Scout to use bullets/lists, never full paragraphs. `app/api/scout/chat/route.ts` |
+| V6-6 | Scout: can't scroll itinerary while Scout panel open | 🔲 pending | Layout bug — Scout panel blocks scrolling of day list. `components/ScoutPanel.tsx`, `app/page.tsx` |
+| V6-7 | Scout: proactive driving warnings in chat | 🔲 pending | Scout should warn when cumulative driving exceeds maxDrivingHours or when adding a long drive ("you've driven a lot today — are you sure?"). |
+| V6-8 | Preference profile ("Customer Traits") | 🔲 pending | New preference system: sliders/ratings for activity types (museums, hiking, wineries, crossfit, shopping, etc.). Stored in Trip. Fed into Scout prompts. New wizard step or settings modal. |
+
+---
+
+## V5 Sprint — Activity Discovery + Bug Fixes — COMPLETE ✅
+
+| ID | Task | Status | Commits |
+|----|------|--------|---------|
+| V5-1 | Activity Discovery Modal — Yelp/Google Maps style | ✅ done | `c508f02`, `2a14266`, `fa18385`, `7fd9a4e`, `421282e`, `179e89c`, `3dd2413`, `6fbebe0` |
+| V5-2 | Dismissible validation warnings in DayDetailPanel | ✅ done | `0f67e98`, `036ade8` |
+| V5-3 | Fix Find Activities blank state | ✅ done | `a78cdc5` |
 
 ---
 
