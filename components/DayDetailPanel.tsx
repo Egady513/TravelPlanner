@@ -7,7 +7,7 @@ import { useTrip } from '@/lib/store';
 import { getValidationEmoji, getValidationColor } from '@/lib/validation';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import AddActivityForm from './AddActivityForm';
-import RecommendActivitiesPanel from './RecommendActivitiesPanel';
+import ActivityDiscoveryModal from './ActivityDiscoveryModal';
 
 interface DayDetailPanelProps {
   day: Day;
@@ -34,7 +34,7 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
   const dogStatus = getDogStatus(day.activities);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizeReason, setOptimizeReason] = useState<string | null>(null);
-  const [showRecommend, setShowRecommend] = useState(false);
+  const [showDiscovery, setShowDiscovery] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
 
@@ -270,7 +270,7 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
             {/* Validation messages */}
             {day.validationStatus.messages
               .filter(m => m.level !== 'success' && !dismissedWarnings.has(m.message))
-              .map((msg, i) => (
+              .map((msg) => (
                 <div key={msg.message}>
                   <div className={`relative text-xs px-2 py-1 pr-6 rounded-full font-medium ${getValidationColor(msg.level)}`}>
                     {getValidationEmoji(msg.level)} {msg.message}
@@ -309,20 +309,19 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
 
             {/* Find Activities */}
             <button
-              onClick={() => setShowRecommend(r => !r)}
+              onClick={() => setShowDiscovery(true)}
               className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 transition-colors font-medium"
             >
-              {showRecommend ? '▲ Hide Suggestions' : '🔍 Find Activities'}
+              🔍 Find Activities
             </button>
-
-            {showRecommend && (
-              <div className="border-t border-gray-200 pt-2">
-                <RecommendActivitiesPanel day={day} onClose={() => setShowRecommend(false)} />
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Activity Discovery Modal */}
+      {showDiscovery && (
+        <ActivityDiscoveryModal day={day} onClose={() => setShowDiscovery(false)} />
+      )}
 
       {/* Edit Activity overlay */}
       {editingActivity && typeof window !== 'undefined' &&
