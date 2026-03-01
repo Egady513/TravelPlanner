@@ -112,6 +112,8 @@ export default function TripMap(props: MapProps = {}) {
 
   // Real-road route renderers (replace straight-line polylinesRef)
   const directionsRenderersRef = useRef<google.maps.DirectionsRenderer[]>([]);
+  // Manual polylines for day routes (replaces DirectionsRenderer to enable hover events)
+  const dayRoutePolylinesRef = useRef<google.maps.Polyline[]>([]);
   // Cache keyed by "lat,lng|lat,lng|..." to avoid duplicate API calls
   const directionsCache = useRef<Map<string, google.maps.DirectionsResult>>(new Map());
 
@@ -254,7 +256,10 @@ export default function TripMap(props: MapProps = {}) {
   useEffect(() => {
     if (!map || !trip) return;
 
-    // Clear previous renderers
+    // Clear previous day route polylines
+    dayRoutePolylinesRef.current.forEach(p => p.setMap(null));
+    dayRoutePolylinesRef.current = [];
+    // Clear previous renderers (legacy cleanup)
     directionsRenderersRef.current.forEach(r => r.setMap(null));
     directionsRenderersRef.current = [];
 
@@ -281,31 +286,62 @@ export default function TripMap(props: MapProps = {}) {
       );
 
       const cacheKey = visibleActivities.map(a => `${a.coordinates.lat},${a.coordinates.lng}`).join('|');
-
       const color = dayColors[index % dayColors.length];
+      const startName = visibleActivities[0].name;
+      const endName = visibleActivities[visibleActivities.length - 1].name;
 
-      const render = (result: google.maps.DirectionsResult) => {
-        // Dashed day-color line — subordinate to the driving route spine
-        const renderer = new google.maps.DirectionsRenderer({
+      const drawDayRoute = (result: google.maps.DirectionsResult) => {
+        const path = result.routes[0]?.overview_path;
+        if (!path) return;
+
+        // Calculate total drive time across all legs
+        const legs = result.routes[0]?.legs ?? [];
+        const totalSeconds = legs.reduce((sum, leg) => sum + (leg.duration?.value ?? 0), 0);
+        const totalDistance = legs.reduce((sum, leg) => sum + (leg.distance?.value ?? 0), 0);
+        const hrs = Math.floor(totalSeconds / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+        const distMi = (totalDistance * 0.000621371).toFixed(0);
+        const hoverLabel = `🚗 ${timeStr} · ${distMi} mi<br/><span style="font-size:11px;color:#6b7280">Day ${day.dayNumber}: ${startName} → ${endName}</span>`;
+
+        // Dashed visible polyline (day color)
+        const dashedLine = new google.maps.Polyline({
+          path,
+          geodesic: false,
+          strokeColor: color,
+          strokeOpacity: 0,
+          strokeWeight: 0,
+          icons: [{
+            icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.65, scale: 2.5, strokeColor: color },
+            offset: '0',
+            repeat: '14px',
+          }],
           map,
-          directions: result,
-          suppressMarkers: true,
-          polylineOptions: {
-            strokeColor: color,
-            strokeOpacity: 0,
-            strokeWeight: 0,
-            icons: [{
-              icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.65, scale: 2.5, strokeColor: color },
-              offset: '0',
-              repeat: '14px',
-            }],
-          },
+          zIndex: 1,
         });
-        directionsRenderersRef.current.push(renderer);
+        dayRoutePolylinesRef.current.push(dashedLine);
+
+        // Invisible hit-area polyline for hover events
+        const hitArea = new google.maps.Polyline({
+          path,
+          strokeColor: color,
+          strokeOpacity: 0,
+          strokeWeight: 12,
+          map,
+          zIndex: 2,
+        });
+        dayRoutePolylinesRef.current.push(hitArea);
+
+        hitArea.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
+          showDriveTimeTooltip(e.latLng, hoverLabel);
+        });
+        hitArea.addListener('mouseout', () => {
+          driveTimeInfoWindow.current?.close();
+        });
       };
 
       if (directionsCache.current.has(cacheKey)) {
-        render(directionsCache.current.get(cacheKey)!);
+        drawDayRoute(directionsCache.current.get(cacheKey)!);
         return;
       }
 
@@ -321,14 +357,14 @@ export default function TripMap(props: MapProps = {}) {
         (result, status) => {
           if (status === 'OK' && result) {
             directionsCache.current.set(cacheKey, result);
-            render(result);
+            drawDayRoute(result);
           } else {
-            console.error(`[DirectionsService] status=${status} for day ${day.dayNumber}. If REQUEST_DENIED, enable the Directions API at https://console.cloud.google.com/apis/library/directions-backend.googleapis.com`);
+            console.error(`[DirectionsService] status=${status} for day ${day.dayNumber}.`);
           }
         }
       );
     });
-  }, [map, trip, visibleTypes, selectedDays]);
+  }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
 
   // Dashed polylines for driving activity start→end
   useEffect(() => {
