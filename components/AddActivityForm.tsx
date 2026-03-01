@@ -270,7 +270,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-h-[90vh] overflow-y-auto">
+    <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{existingActivity ? 'Edit Activity' : 'Add Activity'}</h3>
         <button
@@ -283,23 +283,38 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Activity Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Activity Type
-          </label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as ActivityType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="trail">🥾 Trail</option>
-            <option value="hotel">🏨 Hotel</option>
-            <option value="restaurant">🍽️ Restaurant</option>
-            <option value="camping">⛺ Camping</option>
-            <option value="park">🏞️ Park</option>
-            <option value="driving">🚗 Driving</option>
-          </select>
+        {/* Row: Type + Dog Friendly */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Activity Type
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as ActivityType)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="trail">🥾 Trail</option>
+              <option value="hotel">🏨 Hotel</option>
+              <option value="restaurant">🍽️ Restaurant</option>
+              <option value="camping">⛺ Camping</option>
+              <option value="park">🏞️ Park</option>
+              <option value="driving">🚗 Driving</option>
+            </select>
+          </div>
+          <div className="flex items-end pb-1">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={isDogFriendly}
+                onChange={(e) => setIsDogFriendly(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">
+                🐕 Dog-friendly
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Name */}
@@ -556,40 +571,27 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
           </div>
         )}
 
-        {/* Dog Friendly */}
-        <div>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={isDogFriendly}
-              onChange={(e) => setIsDogFriendly(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        {/* Row: Notes + Day Assignment */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <span className="ml-2 text-sm font-medium text-gray-700">
-              🐕 Dog-friendly
-            </span>
-          </label>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Notes (optional)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any notes..."
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Day Assignment */}
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-          <p className="text-sm text-gray-700">
-            Adding to <strong>Day {currentDayNumber}</strong>
-          </p>
+          </div>
+          <div className="flex items-start pt-6">
+            <div className="w-full bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-sm text-gray-700">
+                Adding to <strong>Day {currentDayNumber}</strong>
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Buttons */}
