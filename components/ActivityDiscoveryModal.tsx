@@ -99,7 +99,10 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
     setGeocodingIds(prev => new Set(prev).add(index));
     try {
       const coords = await geocodePlace(`${s.name}, ${s.location}`);
-      if (!coords) return;
+      if (!coords) {
+        setError('Could not locate this place. Try another suggestion.');
+        return;
+      }
 
       const activity: Activity = {
         id: crypto.randomUUID(),
@@ -126,7 +129,10 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
     setSuggestions([]);
     setError(null);
     setAddedIds(new Set());
+    setGeocodingIds(new Set());
   };
+
+  if (typeof window === 'undefined') return null;
 
   const modal = (
     <div
@@ -226,20 +232,19 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
                   <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
                     {/* Photo */}
                     <div className="h-40 bg-gray-100 flex-shrink-0 relative overflow-hidden">
-                      {s.photoUrl ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-5xl opacity-30">
+                          {typeOptions.find(t => t.type === selectedType)?.emoji}
+                        </span>
+                      </div>
+                      {s.photoUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={s.photoUrl}
                           alt={s.name}
-                          className="w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full object-cover"
                           onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-5xl opacity-30">
-                            {typeOptions.find(t => t.type === selectedType)?.emoji}
-                          </span>
-                        </div>
                       )}
                       {s.isDogFriendly && (
                         <span className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">🐕 Dog OK</span>
@@ -276,6 +281,5 @@ export default function ActivityDiscoveryModal({ day, onClose }: Props) {
     </div>
   );
 
-  if (typeof window === 'undefined') return null;
   return createPortal(modal, document.body);
 }
