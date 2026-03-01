@@ -36,6 +36,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const historyLoaded = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const activityAddTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,6 +45,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      if (activityAddTimerRef.current) clearTimeout(activityAddTimerRef.current);
     };
   }, []);
 
@@ -102,13 +104,13 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
             const data = line.slice(6);
             if (data === '[DONE]') break;
             try {
-              const parsed = JSON.parse(data) as { text?: string; error?: string; type?: string; payload?: RouteChangePayload };
+              const parsed = JSON.parse(data) as { text?: string; error?: string; type?: string; payload?: RouteChangePayload | ActivitySuggestion };
               if (parsed.type === 'route_suggestion' && parsed.payload) {
-                setPendingSuggestion(parsed.payload);
+                setPendingSuggestion(parsed.payload as RouteChangePayload);
                 continue;
               }
               if (parsed.type === 'activity_suggestion' && parsed.payload) {
-                setActivitySuggestion(parsed.payload as unknown as ActivitySuggestion);
+                setActivitySuggestion(parsed.payload as ActivitySuggestion);
                 setActivityAdded(false);
                 continue;
               }
@@ -148,7 +150,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
     setIsAddingActivity(true);
     try {
       const coords = await geocodePlace(`${activitySuggestion.name}, ${activitySuggestion.location}`);
-      if (!coords) { setIsAddingActivity(false); return; }
+      if (!coords) return;
       const activity: Activity = {
         id: crypto.randomUUID(),
         type: activitySuggestion.type,
@@ -163,7 +165,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
       } as Activity;
       addActivity(activity);
       setActivityAdded(true);
-      setTimeout(() => { setActivitySuggestion(null); setActivityAdded(false); }, 2000);
+      activityAddTimerRef.current = setTimeout(() => { setActivitySuggestion(null); setActivityAdded(false); }, 2000);
     } finally {
       setIsAddingActivity(false);
     }
