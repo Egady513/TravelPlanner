@@ -364,7 +364,7 @@ export default function TripMap(props: MapProps = {}) {
             if (status === 'OK' && result) {
               const element = result.rows[0]?.elements[0];
               if (element?.status === 'OK') {
-                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}`;
+                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}<br/><span style="font-size:11px;color:#6b7280">${drive.startLocation.name} → ${drive.endLocation.name}</span>`;
                 driveTimeCache.current.set(cacheKey, label);
                 showDriveTimeTooltip(e.latLng, label);
               }
