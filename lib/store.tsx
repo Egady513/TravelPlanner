@@ -244,7 +244,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
           customInterests: prefs.customInterests ?? prev.preferences?.customInterests ?? [],
         },
       };
-      return updated;
+      const validatedDays = validateTrip(updated);
+      return { ...updated, days: validatedDays };
     });
   }, []);
 
