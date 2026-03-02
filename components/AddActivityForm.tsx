@@ -76,6 +76,39 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
 
   const currentDayNumber = selectedDay || 1;
 
+  // Auto-suggest hotel/camping name from the day's driving endpoint
+  useEffect(() => {
+    if (type !== 'hotel' && type !== 'camping') return;
+    if (name.trim()) return; // Don't overwrite if user already typed something
+    if (!trip) return;
+
+    // Find the current day's last driving activity's endLocation
+    const currentDay = trip.days.find(d => d.dayNumber === currentDayNumber);
+    if (currentDay) {
+      const drives = currentDay.activities.filter(a => a.type === 'driving') as DrivingActivity[];
+      if (drives.length > 0) {
+        const lastDrive = drives[drives.length - 1];
+        if (lastDrive.endLocation?.name) {
+          const city = lastDrive.endLocation.name.split(',')[0].trim();
+          setName(city);
+          return;
+        }
+      }
+    }
+
+    // Fallback: look at previous day's driving endpoint
+    const prevDay = trip.days.find(d => d.dayNumber === currentDayNumber - 1);
+    if (!prevDay) return;
+    const prevDrives = prevDay.activities.filter(a => a.type === 'driving') as DrivingActivity[];
+    if (prevDrives.length > 0) {
+      const lastPrevDrive = prevDrives[prevDrives.length - 1];
+      if (lastPrevDrive.endLocation?.name) {
+        const city = lastPrevDrive.endLocation.name.split(',')[0].trim();
+        setName(city);
+      }
+    }
+  }, [type]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Compute location bias toward the trip's activity region
   const locationBias = useMemo(() => {
     if (!trip) return undefined;
