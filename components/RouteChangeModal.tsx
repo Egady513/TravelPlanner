@@ -1,8 +1,9 @@
 'use client';
 
 import { useTrip, RouteChangePayload } from '@/lib/store';
-import type { Day } from '@/types';
-import { useEffect, useRef } from 'react';
+import type { Day, DrivingActivity } from '@/types';
+import { useEffect, useRef, useState } from 'react';
+import { geocodePlace } from '@/lib/geocoding';
 
 interface RouteChangeModalProps {
   payload: RouteChangePayload;
@@ -33,6 +34,7 @@ function DayPreviewCard({ day, label }: { day: Day; label: string }) {
 export default function RouteChangeModal({ payload, onAccept, onDismiss }: RouteChangeModalProps) {
   const { trip, applyRouteChange } = useTrip();
   const mapRef = useRef<HTMLDivElement>(null);
+  const [isApplying, setIsApplying] = useState(false);
 
   // Get affected days from current trip (BEFORE state)
   const beforeDays = payload.affected_day_numbers
@@ -94,9 +96,56 @@ export default function RouteChangeModal({ payload, onAccept, onDismiss }: Route
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAccept = () => {
-    applyRouteChange(payload);
-    onAccept();
+  const handleAccept = async () => {
+    setIsApplying(true);
+    try {
+      // Geocode any driving activities in new_days so they draw real routes
+      const geocodedDays = await Promise.all(
+        payload.new_days.map(async day => ({
+          ...day,
+          activities: await Promise.all(
+            day.activities.map(async activity => {
+              if (activity.type !== 'driving') return activity;
+              const drive = activity as DrivingActivity;
+              // If startLocation or endLocation is missing/zero coords, geocode by name
+              const needsStartGeocode =
+                !drive.startLocation?.coordinates ||
+                (drive.startLocation.coordinates.lat === 0 && drive.startLocation.coordinates.lng === 0);
+              const needsEndGeocode =
+                !drive.endLocation?.coordinates ||
+                (drive.endLocation.coordinates.lat === 0 && drive.endLocation.coordinates.lng === 0);
+
+              const [startCoords, endCoords] = await Promise.all([
+                needsStartGeocode && drive.startLocation?.name
+                  ? geocodePlace(drive.startLocation.name)
+                  : Promise.resolve(drive.startLocation?.coordinates ?? null),
+                needsEndGeocode && drive.endLocation?.name
+                  ? geocodePlace(drive.endLocation.name)
+                  : Promise.resolve(drive.endLocation?.coordinates ?? null),
+              ]);
+
+              const updatedDrive: DrivingActivity = {
+                ...drive,
+                startLocation: {
+                  name: drive.startLocation?.name ?? '',
+                  coordinates: startCoords ?? drive.startLocation?.coordinates ?? { lat: 0, lng: 0 },
+                },
+                endLocation: {
+                  name: drive.endLocation?.name ?? '',
+                  coordinates: endCoords ?? drive.endLocation?.coordinates ?? { lat: 0, lng: 0 },
+                },
+                coordinates: startCoords ?? drive.startLocation?.coordinates ?? drive.coordinates,
+              };
+              return updatedDrive;
+            })
+          ),
+        }))
+      );
+      applyRouteChange({ ...payload, new_days: geocodedDays });
+      onAccept();
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   return (
@@ -150,9 +199,10 @@ export default function RouteChangeModal({ payload, onAccept, onDismiss }: Route
         <div className="px-6 py-4 border-t flex gap-3">
           <button
             onClick={handleAccept}
-            className="flex-1 bg-emerald-500 text-white py-2.5 rounded-lg font-semibold hover:bg-emerald-600 transition-colors"
+            disabled={isApplying}
+            className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-60"
           >
-            Accept Change
+            {isApplying ? 'Applying…' : 'Accept Change'}
           </button>
           <button
             onClick={onDismiss}
