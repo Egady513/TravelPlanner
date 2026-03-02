@@ -98,7 +98,9 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
     }).join(', ');
     const activities = day.activities.filter(a => a.type !== 'driving').map(a => a.name).join(', ');
     const totalDriveNote = totalDriveHours > 0 ? ` [${totalDriveHours.toFixed(1)}h driving total]` : '';
-    return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}${totalDriveNote}`;
+    const hasCamping = day.activities.some(a => a.type === 'camping');
+    const lateDriveWarning = hasCamping && totalDriveHours >= 5 ? ' [⚠️ long drive day to camp]' : '';
+    return `Day ${day.dayNumber}: ${driveInfo ? `Drive ${driveInfo}` : ''}${driveInfo && activities ? ' | ' : ''}${activities || (drives.length === 0 ? 'empty' : '')}${totalDriveNote}${lateDriveWarning}`;
   }).join('\n');
 
   const INTEREST_LABELS: { key: keyof Omit<TripPreferences, 'customInterests'>; label: string }[] = [
@@ -134,6 +136,7 @@ RESPONSE STYLE — STRICT:
 
 ROUTE CHANGE RULE: If a drive in the plan exceeds ${trip.maxDrivingHours}h (the user's max), you MUST proactively call suggest_route_change to offer a concrete split — even if the user didn't ask. Write 1–2 sentences explaining why first, then call the tool.
 DRIVING WARNING RULE: When a day's total drive time (shown in brackets as "[Xh driving total]") is >= ${Math.round(trip.maxDrivingHours * 0.75 * 10) / 10}h, proactively warn in your response before making suggestions for that day.
+CAMPING ARRIVAL RULE: If a day includes a camping activity AND the driving arrival time (shown in trip summary as "arrive HH:MM") is after 19:00 (7pm), proactively warn: "⚠️ You'll arrive at camp around [time] after dark — consider leaving earlier, booking a nearby hotel for night 1, or reserving a site close to the highway." If no arrival time is shown but total drive hours would put arrival past 7pm assuming a 9am departure, flag it as a risk.
 
 USER PREFERENCES:
 - Max driving/day: ${trip.maxDrivingHours}h | Pace: ${trip.tripPace} | Dog: ${trip.hasDog ? 'yes 🐕' : 'no'} | Budget: ${trip.budgetStyle} | Lodging: ${trip.lodgingPreferences?.join(', ') || 'flexible'} | People: ${trip.peopleCount}
