@@ -21,6 +21,8 @@ const markerColors: Record<ActivityType, string> = {
   camping: '#92400e', // brown
   park: '#059669', // dark green
   driving: '#6b7280', // gray
+  activity: '#8b5cf6', // purple
+  scenic: '#06b6d4',   // cyan
 };
 
 const ALL_TYPES = Object.keys(markerColors) as ActivityType[];
@@ -32,6 +34,8 @@ const activityEmojis: Record<ActivityType, string> = {
   camping: '⛺',
   park: '🏞️',
   driving: '🚗',
+  activity: '🎡',
+  scenic: '🌄',
 };
 
 // Default map center (USA center)
@@ -92,7 +96,7 @@ export default function TripMap(props: MapProps = {}) {
 
   // Layer filter state (all on by default)
   const [visibleTypes, setVisibleTypes] = useState<Set<ActivityType>>(
-    () => new Set<ActivityType>(['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving'])
+    () => new Set<ActivityType>(['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving', 'activity', 'scenic'])
   );
 
   // Day selector state — empty array means "All Days"
@@ -549,6 +553,8 @@ export default function TripMap(props: MapProps = {}) {
                       { type: 'restaurant' as ActivityType, label: 'Restaurant', emoji: '🍽️' },
                       { type: 'park' as ActivityType, label: 'Park', emoji: '🏞️' },
                       { type: 'driving' as ActivityType, label: 'Driving', emoji: '🚗' },
+                      { type: 'activity' as ActivityType, label: 'Activity', emoji: '🎡' },
+                      { type: 'scenic' as ActivityType, label: 'Scenic Drive', emoji: '🌄' },
                     ]
                   ).map(({ type, label, emoji }) => (
                     <label key={type} className="flex items-center gap-2 cursor-pointer mb-1">

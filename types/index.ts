@@ -1,6 +1,6 @@
 // Core data models for the Road Trip Planner
 
-export type ActivityType = 'trail' | 'hotel' | 'restaurant' | 'camping' | 'park' | 'driving';
+export type ActivityType = 'trail' | 'hotel' | 'restaurant' | 'camping' | 'park' | 'driving' | 'activity' | 'scenic';
 
 export type LodgingType = 'hotel' | 'camping';
 

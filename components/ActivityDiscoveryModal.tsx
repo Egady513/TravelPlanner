@@ -30,6 +30,8 @@ const typeOptions: { type: ActivityType; label: string; emoji: string; descripti
   { type: 'hotel', label: 'Hotels', emoji: '🏨', description: 'Lodging options' },
   { type: 'camping', label: 'Camping', emoji: '⛺', description: 'Campgrounds & sites' },
   { type: 'park', label: 'Parks', emoji: '🏞️', description: 'Parks & scenic spots' },
+  { type: 'activity', label: 'Activities', emoji: '🎡', description: 'Events & experiences' },
+  { type: 'scenic', label: 'Scenic Drives', emoji: '🌄', description: 'Scenic routes & roads' },
 ];
 
 function StarRating({ rating }: { rating: number | null }) {

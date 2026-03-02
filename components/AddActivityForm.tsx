@@ -300,6 +300,8 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
               <option value="camping">⛺ Camping</option>
               <option value="park">🏞️ Park</option>
               <option value="driving">🚗 Driving</option>
+              <option value="activity">🎡 Activity / Event</option>
+              <option value="scenic">🌄 Scenic Drive</option>
             </select>
           </div>
           <div className="flex items-end pb-1">
