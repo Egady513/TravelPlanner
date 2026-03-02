@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   // Fix C2: Validate ActivityType against allowlist
-  const VALID_TYPES = ['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving'] as const;
+  const VALID_TYPES = ['trail', 'hotel', 'restaurant', 'camping', 'park', 'driving', 'activity', 'scenic'] as const;
   if (!VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
     return Response.json({ error: 'Invalid activity type' }, { status: 400 });
   }

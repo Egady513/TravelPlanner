@@ -52,7 +52,7 @@ Trip preferences:
 
 Generate 3-5 activities that make a great, cohesive day. Order them as they would happen chronologically. Mix types naturally. Use REAL, specific place names that exist at this location.
 
-Types available: trail, hotel, restaurant, camping, park, driving
+Types available: trail, hotel, restaurant, camping, park, driving, activity (events/experiences), scenic (scenic drive routes)
 
 Respond with ONLY valid JSON, no markdown:
 {
