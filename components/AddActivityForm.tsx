@@ -55,6 +55,10 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
   const [arrivalTime, setArrivalTime] = useState<string>(
     existingDrive?.arrivalTime ?? ''
   );
+  const [waypoints, setWaypoints] = useState<Array<{ name: string; coordinates: Coordinates }>>(
+    existingDrive?.waypoints ?? []
+  );
+  const [waypointInput, setWaypointInput] = useState('');
 
   // Camping-specific
   const [sourceLink, setSourceLink] = useState(existingCamping?.sourceLink ?? '');
@@ -216,6 +220,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         estimatedDriveDistance: estimatedDriveDistance.trim() || undefined,
         departureTime: departureTime || undefined,
         arrivalTime: arrivalTime || undefined,
+        waypoints: waypoints.length > 0 ? waypoints : undefined,
       } as DrivingActivity;
       if (existingActivity) {
         updateActivity(existingActivity.id, activity as Partial<Activity>);
@@ -406,6 +411,37 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
                   🚗 ~{estimatedDriveHours}h{estimatedDriveDistance ? ` · ${estimatedDriveDistance}` : ''}
                 </p>
               )}
+            </div>
+            {/* Stops Along the Way */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Stops Along the Way</label>
+              {waypoints.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {waypoints.map((wp, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+                      📍 {wp.name}
+                      <button
+                        type="button"
+                        onClick={() => setWaypoints(prev => prev.filter((_, j) => j !== i))}
+                        className="hover:text-orange-900 leading-none"
+                        aria-label={`Remove ${wp.name}`}
+                      >✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <PlacesAutocomplete
+                value={waypointInput}
+                onChange={setWaypointInput}
+                onPlaceSelected={place => {
+                  setWaypoints(prev => [...prev, { name: place.name, coordinates: place.coordinates }]);
+                  setWaypointInput('');
+                }}
+                placeholder="Add a stop (e.g., Mt. Rushmore)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                locationBias={locationBias}
+              />
+              <p className="text-xs text-gray-400 mt-1">Optional — stops will be included in the route</p>
             </div>
             {driveStart && driveEnd && (
               <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded">

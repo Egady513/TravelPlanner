@@ -89,6 +89,7 @@ export interface DrivingActivity extends Activity {
   estimatedDriveDistance?: string; // e.g. "143 mi"
   departureTime?: string;  // HH:MM 24h, e.g. "08:00"
   arrivalTime?: string;    // HH:MM 24h, e.g. "14:30"
+  waypoints?: Array<{ name: string; coordinates: Coordinates }>;
 }
 
 export interface Day {

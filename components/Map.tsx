@@ -386,7 +386,8 @@ export default function TripMap(props: MapProps = {}) {
     const drivingActivities = allActivities as DrivingActivity[];
 
     drivingActivities.forEach(drive => {
-      const cacheKey = `drive|${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}→${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
+      const waypointKey = drive.waypoints?.map(w => `${w.coordinates.lat},${w.coordinates.lng}`).join('|') ?? '';
+      const cacheKey = `drive|${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}|${waypointKey}|${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
 
       const attachHover = (polyline: google.maps.Polyline) => {
         polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
@@ -453,6 +454,11 @@ export default function TripMap(props: MapProps = {}) {
           {
             origin: drive.startLocation.coordinates,
             destination: drive.endLocation.coordinates,
+            waypoints: drive.waypoints?.map(w => ({
+              location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
+              stopover: true,
+            })) ?? [],
+            optimizeWaypoints: false,
             travelMode: google.maps.TravelMode.DRIVING,
           },
           (result, status) => {
