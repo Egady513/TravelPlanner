@@ -91,7 +91,10 @@ function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadSc
       const dist = d.estimatedDriveDistance ?? '';
       const details = [hrs, dist].filter(Boolean).join(' · ');
       const suffix = details ? ` (${details})` : '';
-      return `${d.startLocation.name} → ${d.endLocation.name}${suffix}`;
+      const timeInfo = d.departureTime
+        ? ` depart ${d.departureTime}${d.arrivalTime ? ` → arrive ${d.arrivalTime}` : ''}`
+        : '';
+      return `${d.startLocation.name} → ${d.endLocation.name}${suffix}${timeInfo}`;
     }).join(', ');
     const activities = day.activities.filter(a => a.type !== 'driving').map(a => a.name).join(', ');
     const totalDriveNote = totalDriveHours > 0 ? ` [${totalDriveHours.toFixed(1)}h driving total]` : '';

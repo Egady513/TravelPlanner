@@ -49,6 +49,12 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
     existingDrive?.estimatedDriveDistance ?? ''
   );
   const [isEstimatingDriveTime, setIsEstimatingDriveTime] = useState(false);
+  const [departureTime, setDepartureTime] = useState<string>(
+    existingDrive?.departureTime ?? ''
+  );
+  const [arrivalTime, setArrivalTime] = useState<string>(
+    existingDrive?.arrivalTime ?? ''
+  );
 
   // Camping-specific
   const [sourceLink, setSourceLink] = useState(existingCamping?.sourceLink ?? '');
@@ -208,6 +214,8 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         endLocation: driveEnd,
         estimatedDriveHours: estimatedDriveHours ?? undefined,
         estimatedDriveDistance: estimatedDriveDistance.trim() || undefined,
+        departureTime: departureTime || undefined,
+        arrivalTime: arrivalTime || undefined,
       } as DrivingActivity;
       if (existingActivity) {
         updateActivity(existingActivity.id, activity as Partial<Activity>);
@@ -404,6 +412,42 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
                 🚗 Drive: {driveStartInput} → {driveEndInput}
               </p>
             )}
+            {/* Departure / Arrival Times */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Departure Time</label>
+                <input
+                  type="time"
+                  value={departureTime}
+                  onChange={e => setDepartureTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Est. Arrival Time</label>
+                <input
+                  type="time"
+                  value={arrivalTime}
+                  onChange={e => setArrivalTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                />
+                {departureTime && estimatedDriveHours && !arrivalTime && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const [h, m] = departureTime.split(':').map(Number);
+                      const totalMins = h * 60 + m + Math.round(estimatedDriveHours * 60);
+                      const ah = Math.floor(totalMins / 60) % 24;
+                      const am = totalMins % 60;
+                      setArrivalTime(`${String(ah).padStart(2, '0')}:${String(am).padStart(2, '0')}`);
+                    }}
+                    className="mt-1 text-xs text-blue-600 hover:text-blue-700"
+                  >
+                    Auto-calculate from departure + drive time
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

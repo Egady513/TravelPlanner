@@ -87,6 +87,8 @@ export interface DrivingActivity extends Activity {
   };
   estimatedDriveHours?: number;
   estimatedDriveDistance?: string; // e.g. "143 mi"
+  departureTime?: string;  // HH:MM 24h, e.g. "08:00"
+  arrivalTime?: string;    // HH:MM 24h, e.g. "14:30"
 }
 
 export interface Day {

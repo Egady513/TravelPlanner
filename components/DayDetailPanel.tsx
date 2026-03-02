@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Day, Activity } from '@/types';
+import { Day, Activity, DrivingActivity } from '@/types';
 import { useTrip } from '@/lib/store';
 import { getValidationEmoji, getValidationColor } from '@/lib/validation';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -215,6 +215,12 @@ export default function DayDetailPanel({ day, onClose, onAddActivity }: DayDetai
                                   </div>
                                   {activity.notes && (
                                     <p className="text-xs text-gray-400 mt-1 truncate">{activity.notes}</p>
+                                  )}
+                                  {activity.type === 'driving' && (activity as DrivingActivity).departureTime && (
+                                    <span className="text-xs text-gray-400">
+                                      🕐 {(activity as DrivingActivity).departureTime}
+                                      {(activity as DrivingActivity).arrivalTime && ` → ${(activity as DrivingActivity).arrivalTime}`}
+                                    </span>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
