@@ -30,6 +30,7 @@ interface TripContextType {
   applyRouteChange: (payload: RouteChangePayload) => void;
   addDay: () => void;
   updatePreferences: (prefs: Partial<TripPreferences>) => void;
+  updateDestinationBrief: (brief: string) => void;
 }
 
 const TripContext = createContext<TripContextType | undefined>(undefined);
@@ -249,13 +250,20 @@ export function TripProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateDestinationBrief = useCallback((brief: string) => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      return { ...prev, destinationBrief: brief };
+    });
+  }, []);
+
   return (
     <TripContext.Provider
       value={{
         trip, setTrip, addActivity, removeActivity, updateActivity,
         reorderActivities, setDayWeather, clearTrip,
         selectedDay, setSelectedDay, isSaving,
-        logRemovedItem, applyRouteChange, addDay, updatePreferences,
+        logRemovedItem, applyRouteChange, addDay, updatePreferences, updateDestinationBrief,
       }}
     >
       {children}

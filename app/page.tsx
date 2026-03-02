@@ -15,7 +15,7 @@ import DashboardModal from "@/components/DashboardModal";
 import PreferencesModal from "@/components/PreferencesModal";
 
 export default function Home() {
-  const { trip, setTrip } = useTrip();
+  const { trip, setTrip, updateDestinationBrief } = useTrip();
   const [showWizard, setShowWizard] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -68,6 +68,19 @@ export default function Home() {
     };
 
     setTrip(newTrip);
+
+    // Kick off destination research in the background (non-blocking)
+    if (newTrip.days.length > 0) {
+      fetch('/api/scout/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip: newTrip }),
+      })
+        .then(r => r.json() as Promise<{ brief: string }>)
+        .then(({ brief }) => { if (brief) updateDestinationBrief(brief); })
+        .catch(err => console.error('[research] failed:', err));
+    }
+
     setShowWizard(false);
   };
 
