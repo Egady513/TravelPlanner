@@ -37,6 +37,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const activityAddTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,6 +70,9 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
     const outgoingMessages = [...messages, userMessage];
     setMessages(prev => [...prev, userMessage, { role: 'assistant', content: '' }]);
     setInputValue('');
+    if (inputRef.current) {
+      inputRef.current.style.height = '36px';
+    }
     setIsStreaming(true);
 
     const controller = new AbortController();
@@ -250,14 +254,26 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
         {/* Input */}
         <div className="border-t p-3">
           <div className="flex gap-2">
-            <input
-              type="text"
+            <textarea
+              ref={inputRef}
               value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              placeholder="Ask Scout about your trip..."
+              onChange={e => {
+                setInputValue(e.target.value);
+                // Auto-grow
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              placeholder="Ask Scout about your trip… (Shift+Enter for new line)"
               disabled={isStreaming}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 disabled:bg-gray-50"
+              rows={1}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 disabled:bg-gray-50 resize-none overflow-hidden leading-5 min-h-[36px]"
+              style={{ height: '36px' }}
             />
             <button
               onClick={sendMessage}
