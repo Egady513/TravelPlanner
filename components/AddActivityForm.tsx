@@ -219,6 +219,17 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
     );
   }, [driveStart, driveEnd]);
 
+  // Auto-calculate arrival time from departure time + drive hours
+  useEffect(() => {
+    if (!departureTime || !estimatedDriveHours || estimatedDriveHours <= 0) return;
+    const [h, m] = departureTime.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return;
+    const totalMins = h * 60 + m + Math.round(estimatedDriveHours * 60);
+    const ah = Math.floor(totalMins / 60) % 24;
+    const am = totalMins % 60;
+    setArrivalTime(`${String(ah).padStart(2, '0')}:${String(am).padStart(2, '0')}`);
+  }, [departureTime, estimatedDriveHours]);
+
   const handlePlaceSelected = (result: { name: string; coordinates: { lat: number; lng: number } }) => {
     setName(result.name);
     setParsedCoords(result.coordinates);
@@ -500,22 +511,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
                   onChange={e => setArrivalTime(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
                 />
-                {departureTime && estimatedDriveHours && !arrivalTime && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const [h, m] = departureTime.split(':').map(Number);
-                      const totalMins = h * 60 + m + Math.round(estimatedDriveHours * 60);
-                      const ah = Math.floor(totalMins / 60) % 24;
-                      const am = totalMins % 60;
-                      setArrivalTime(`${String(ah).padStart(2, '0')}:${String(am).padStart(2, '0')}`);
-                    }}
-                    className="mt-1 text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    Auto-calculate from departure + drive time
-                  </button>
-                )}
-              </div>
+                </div>
             </div>
           </div>
         )}
