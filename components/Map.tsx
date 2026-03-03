@@ -421,7 +421,16 @@ export default function TripMap(props: MapProps = {}) {
 
     const drivingActivities = allActivities as DrivingActivity[];
 
-    drivingActivities.forEach(drive => {
+    drivingActivities.forEach((drive, index) => {
+      // Skip routes with invalid coordinates (geocoding failed)
+      const startCoords = drive.startLocation.coordinates;
+      const endCoords = drive.endLocation.coordinates;
+      if (!startCoords || (startCoords.lat === 0 && startCoords.lng === 0) ||
+          !endCoords || (endCoords.lat === 0 && endCoords.lng === 0)) {
+        console.warn(`[Map] Skipping route for drive "${drive.name}" — missing coordinates`);
+        return;
+      }
+
       const validWaypoints = (drive.waypoints ?? []).filter(
         w => w.coordinates && (w.coordinates.lat !== 0 || w.coordinates.lng !== 0)
       );
@@ -487,34 +496,38 @@ export default function TripMap(props: MapProps = {}) {
       if (directionsCache.current.has(cacheKey)) {
         makeDashedPolyline(directionsCache.current.get(cacheKey)!.routes[0].overview_path);
       } else {
-        // Fetch real road path, fall back to straight line on failure
-        const dirService = new google.maps.DirectionsService();
-        dirService.route(
-          {
-            origin: drive.startLocation.coordinates,
-            destination: drive.endLocation.coordinates,
-            ...(validWaypoints.length ? {
-              waypoints: validWaypoints.map(w => ({
-                location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
-                stopover: true,
-              })),
-              optimizeWaypoints: false,
-            } : {}),
-            travelMode: google.maps.TravelMode.DRIVING,
-          },
-          (result, status) => {
-            if (status === 'OK' && result) {
-              directionsCache.current.set(cacheKey, result);
-              makeDashedPolyline(result.routes[0].overview_path);
-            } else {
-              // Fallback: straight dashed line
-              makeDashedPolyline([
-                new google.maps.LatLng(drive.startLocation.coordinates.lat, drive.startLocation.coordinates.lng),
-                new google.maps.LatLng(drive.endLocation.coordinates.lat, drive.endLocation.coordinates.lng),
-              ]);
+        // Stagger requests 150ms apart to avoid OVER_QUERY_LIMIT with many drives
+        setTimeout(() => {
+          // Fetch real road path, fall back to straight line on failure
+          const dirService = new google.maps.DirectionsService();
+          dirService.route(
+            {
+              origin: drive.startLocation.coordinates,
+              destination: drive.endLocation.coordinates,
+              ...(validWaypoints.length ? {
+                waypoints: validWaypoints.map(w => ({
+                  location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
+                  stopover: true,
+                })),
+                optimizeWaypoints: false,
+              } : {}),
+              travelMode: google.maps.TravelMode.DRIVING,
+            },
+            (result, status) => {
+              if (status === 'OK' && result) {
+                directionsCache.current.set(cacheKey, result);
+                makeDashedPolyline(result.routes[0].overview_path);
+              } else {
+                console.error(`[Map] DirectionsService status=${status} for drive "${drive.name}" (${drive.startLocation.name} → ${drive.endLocation.name})`);
+                // Fallback: straight dashed line
+                makeDashedPolyline([
+                  new google.maps.LatLng(drive.startLocation.coordinates.lat, drive.startLocation.coordinates.lng),
+                  new google.maps.LatLng(drive.endLocation.coordinates.lat, drive.endLocation.coordinates.lng),
+                ]);
+              }
             }
-          }
-        );
+          );
+        }, index * 150);
       }
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);

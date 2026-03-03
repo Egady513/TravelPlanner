@@ -104,8 +104,8 @@ export default function RouteChangeModal({ payload, onAccept, onDismiss }: Route
         payload.new_days.map(async day => ({
           ...day,
           activities: await Promise.all(
-            day.activities.map(async activity => {
-              if (activity.type !== 'driving') return activity;
+            day.activities.map(async (activity, actIdx) => {
+              if (activity.type === 'driving') {
               const drive = activity as DrivingActivity;
               // If startLocation or endLocation is missing/zero coords, geocode by name
               const needsStartGeocode =
@@ -137,6 +137,16 @@ export default function RouteChangeModal({ payload, onAccept, onDismiss }: Route
                 coordinates: startCoords ?? drive.startLocation?.coordinates ?? drive.coordinates,
               };
               return updatedDrive;
+              }
+              // For non-driving activities, geocode if coordinates are missing/zero
+              const needsGeocode = !activity.coordinates ||
+                (activity.coordinates.lat === 0 && activity.coordinates.lng === 0);
+              if (!needsGeocode) return activity;
+
+              // Stagger geocode requests slightly to avoid rate limits
+              await new Promise(resolve => setTimeout(resolve, actIdx * 100));
+              const coords = await geocodePlace(activity.name);
+              return coords ? { ...activity, coordinates: coords } : activity;
             })
           ),
         }))
