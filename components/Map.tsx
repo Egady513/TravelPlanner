@@ -248,6 +248,35 @@ export default function TripMap(props: MapProps = {}) {
       markersRef.current.set(activity.id, marker);
     });
 
+    // Add waypoint pins for driving activities (always visible, regardless of layer toggle)
+    trip.days.forEach(day => {
+      if (!isDaySelected(day.dayNumber)) return;
+      day.activities.forEach(activity => {
+        if (activity.type !== 'driving') return;
+        const drive = activity as DrivingActivity;
+        if (!drive.waypoints?.length) return;
+        drive.waypoints.forEach((wp, i) => {
+          const wpEl = document.createElement('div');
+          wpEl.style.cssText = [
+            'width:10px',
+            'height:10px',
+            'border-radius:50%',
+            'background:#6b7280',
+            'border:2px solid white',
+          ].join(';');
+
+          const wpMarker = new google.maps.marker.AdvancedMarkerElement({
+            position: { lat: wp.coordinates.lat, lng: wp.coordinates.lng },
+            map,
+            title: wp.name,
+            content: wpEl,
+          });
+
+          markersRef.current.set(`wp-${drive.id}-${i}`, wpMarker);
+        });
+      });
+    });
+
     // Fit map to show all visible markers
     if (allActivities.length > 0) {
       const bounds = new google.maps.LatLngBounds();
