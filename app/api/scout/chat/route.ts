@@ -63,6 +63,25 @@ const SUGGEST_ADD_ACTIVITY_TOOL: Anthropic.Tool = {
   },
 };
 
+const REMOVE_ACTIVITY_TOOL: Anthropic.Tool = {
+  name: 'remove_activity',
+  description:
+    'Suggest removing a specific activity from the trip itinerary. ' +
+    'Only call this when the user explicitly asks to clean up, simplify, or remove something, or when an activity is clearly redundant or problematic. ' +
+    'Do not call this proactively without user intent. ' +
+    'Call at most twice per response.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      dayNumber: { type: 'number', description: 'Day number the activity is on' },
+      activityId: { type: 'string', description: 'The id field of the activity to remove' },
+      activityName: { type: 'string', description: 'Display name of the activity (for confirmation UI)' },
+      reason: { type: 'string', description: 'One sentence why this activity should be removed' },
+    },
+    required: ['dayNumber', 'activityId', 'activityName', 'reason'],
+  },
+};
+
 function buildSystemPrompt(trip: Trip, context: Awaited<ReturnType<typeof loadScoutContext>>): string {
   const removedSection = context.removedItems.length > 0
     ? `\nPREVIOUSLY REMOVED ITEMS (do NOT re-suggest these):\n${context.removedItems
@@ -216,7 +235,7 @@ export async function POST(request: Request) {
           model: 'claude-sonnet-4-6',
           max_tokens: 4096,
           system: systemPrompt,
-          tools: [SUGGEST_ROUTE_CHANGE_TOOL, SUGGEST_ADD_ACTIVITY_TOOL],
+          tools: [SUGGEST_ROUTE_CHANGE_TOOL, SUGGEST_ADD_ACTIVITY_TOOL, REMOVE_ACTIVITY_TOOL],
           messages: allMessages,
         });
 
@@ -235,6 +254,15 @@ export async function POST(request: Request) {
                 controller.enqueue(
                   encoder.encode(
                     `data: ${JSON.stringify({ type: 'activity_suggestion', payload: block.input })}\n\n`
+                  )
+                );
+              }
+            }
+            if (block.type === 'tool_use' && block.name === 'remove_activity') {
+              if (!closed) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'remove_activity', payload: block.input })}\n\n`
                   )
                 );
               }

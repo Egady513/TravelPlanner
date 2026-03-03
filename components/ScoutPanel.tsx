@@ -14,7 +14,7 @@ interface ScoutPanelProps {
 }
 
 export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
-  const { trip, addActivity } = useTrip();
+  const { trip, addActivity, removeActivity } = useTrip();
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -32,6 +32,12 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const [activitySuggestion, setActivitySuggestion] = useState<ActivitySuggestion | null>(null);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [activityAdded, setActivityAdded] = useState(false);
+  const [removeActivitySuggestion, setRemoveActivitySuggestion] = useState<{
+    dayNumber: number;
+    activityId: string;
+    activityName: string;
+    reason: string;
+  } | null>(null);
 
   const historyLoaded = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -109,7 +115,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
             const data = line.slice(6);
             if (data === '[DONE]') break;
             try {
-              const parsed = JSON.parse(data) as { text?: string; error?: string; type?: string; payload?: RouteChangePayload | ActivitySuggestion };
+              const parsed = JSON.parse(data) as { text?: string; error?: string; type?: string; payload?: RouteChangePayload | ActivitySuggestion | { dayNumber: number; activityId: string; activityName: string; reason: string } };
               if (parsed.type === 'route_suggestion' && parsed.payload) {
                 setPendingSuggestion(parsed.payload as RouteChangePayload);
                 continue;
@@ -117,6 +123,10 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
               if (parsed.type === 'activity_suggestion' && parsed.payload) {
                 setActivitySuggestion(parsed.payload as ActivitySuggestion);
                 setActivityAdded(false);
+                continue;
+              }
+              if (parsed.type === 'remove_activity' && parsed.payload) {
+                setRemoveActivitySuggestion(parsed.payload as { dayNumber: number; activityId: string; activityName: string; reason: string });
                 continue;
               }
               if (parsed.error) {
@@ -258,6 +268,34 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
               </button>
               <button
                 onClick={() => setActivitySuggestion(null)}
+                className="flex-1 bg-white text-gray-600 text-xs py-1.5 rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Remove Activity Suggestion Card */}
+        {removeActivitySuggestion && (
+          <div className="mx-3 mb-2 border border-red-200 rounded-lg bg-red-50 p-3">
+            <p className="text-xs font-semibold text-red-800 mb-0.5">
+              🗑️ Scout suggests removing:
+            </p>
+            <p className="text-xs font-medium text-red-900 mb-0.5">{removeActivitySuggestion.activityName}</p>
+            <p className="text-xs text-red-700 mb-2">{removeActivitySuggestion.reason}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  removeActivity(removeActivitySuggestion.activityId);
+                  setRemoveActivitySuggestion(null);
+                }}
+                className="flex-1 bg-red-600 text-white text-xs py-1.5 rounded-md hover:bg-red-700"
+              >
+                Remove
+              </button>
+              <button
+                onClick={() => setRemoveActivitySuggestion(null)}
                 className="flex-1 bg-white text-gray-600 text-xs py-1.5 rounded-md border border-gray-300 hover:bg-gray-50"
               >
                 Dismiss
