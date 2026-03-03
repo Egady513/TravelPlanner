@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { Trip, Day, ActivityType } from '@/types';
+import type { Trip, Day, ActivityType, DrivingActivity } from '@/types';
 
 const client = new Anthropic();
 
@@ -32,8 +32,9 @@ export async function POST(request: Request) {
   }
 
   const existingNames = day.activities.map(a => a.name).join(', ') || 'none';
+  const firstDrive = day.activities.find(a => a.type === 'driving') as DrivingActivity | undefined;
   const locationHint = day.activities.find(a => a.type !== 'driving')?.name
-    || day.activities[0]?.name
+    || firstDrive?.endLocation?.name
     || `Day ${day.dayNumber} of the trip`;
 
   // Fix I3: Changed "4" to "3 to 5"
