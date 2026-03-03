@@ -123,6 +123,8 @@ export default function TripMap(props: MapProps = {}) {
   const dayRoutePolylinesRef = useRef<google.maps.Polyline[]>([]);
   // Cache keyed by "lat,lng|lat,lng|..." to avoid duplicate API calls
   const directionsCache = useRef<Map<string, google.maps.DirectionsResult>>(new Map());
+  // Track route keys that have failed so we don't retry them on every re-render
+  const failedRouteCacheRef = useRef<Set<string>>(new Set());
 
   // Drive time cache and InfoWindow for hover tooltips
   const driveTimeCache = useRef<Map<string, string>>(new Map());
@@ -214,7 +216,7 @@ export default function TripMap(props: MapProps = {}) {
     markersRef.current.forEach(marker => { marker.map = null; });
     markersRef.current.clear();
 
-    const allActivities = trip.days.flatMap(day => day.activities).filter(a => {
+    const allActivities = trip.days.flatMap(day => day.activities ?? []).filter(a => {
       if (a.showOnMap === false) return false;
       if (!isDaySelected(a.dayNumber)) return false;
       return visibleTypes.has(a.type);
@@ -254,7 +256,7 @@ export default function TripMap(props: MapProps = {}) {
     // Add waypoint pins for driving activities (always visible, regardless of layer toggle)
     trip.days.forEach(day => {
       if (!isDaySelected(day.dayNumber)) return;
-      day.activities.forEach(activity => {
+      (day.activities ?? []).forEach(activity => {
         if (activity.type !== 'driving') return;
         const drive = activity as DrivingActivity;
         if (!drive.waypoints?.length) return;
@@ -298,13 +300,15 @@ export default function TripMap(props: MapProps = {}) {
     // Clear previous renderers (legacy cleanup)
     directionsRenderersRef.current.forEach(r => r.setMap(null));
     directionsRenderersRef.current = [];
+    // Clear failed route cache so routes can be retried if trip data changes
+    failedRouteCacheRef.current.clear();
 
     const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
     trip.days.forEach((day, index) => {
       if (!isDaySelected(day.dayNumber)) return;
 
-      const visibleActivities = day.activities.filter(a =>
+      const visibleActivities = (day.activities ?? []).filter(a =>
         a.showOnMap !== false &&
         a.coordinates?.lat !== 0 &&
         a.coordinates?.lng !== 0
@@ -384,6 +388,7 @@ export default function TripMap(props: MapProps = {}) {
         drawDayRoute(directionsCache.current.get(cacheKey)!);
         return;
       }
+      if (failedRouteCacheRef.current.has(cacheKey)) return;
 
       const service = new google.maps.DirectionsService();
       service.route(
@@ -400,6 +405,7 @@ export default function TripMap(props: MapProps = {}) {
             drawDayRoute(result);
           } else {
             console.error(`[DirectionsService] status=${status} for day ${day.dayNumber}.`);
+            failedRouteCacheRef.current.add(cacheKey);
           }
         }
       );
@@ -416,7 +422,7 @@ export default function TripMap(props: MapProps = {}) {
     if (!visibleTypes.has('driving')) return;
 
     const allActivities = trip.days
-      .flatMap(d => d.activities)
+      .flatMap(d => d.activities ?? [])
       .filter(a => a.showOnMap !== false && a.type === 'driving' && isDaySelected(a.dayNumber));
 
     const drivingActivities = allActivities as DrivingActivity[];
@@ -545,15 +551,16 @@ export default function TripMap(props: MapProps = {}) {
     trip.days.forEach(day => {
       if (!isDaySelected(day.dayNumber)) return;
 
-      const drives = day.activities.filter(a => a.type === 'driving') as DrivingActivity[];
+      const dayActivities = day.activities ?? [];
+      const drives = dayActivities.filter(a => a.type === 'driving') as DrivingActivity[];
 
       drives.forEach(drive => {
-        const driveIndex = day.activities.findIndex(a => a.id === drive.id);
+        const driveIndex = dayActivities.findIndex(a => a.id === drive.id);
         if (driveIndex === -1) return;
 
         // Find the first non-driving activity that comes after this drive
-        for (let i = driveIndex + 1; i < day.activities.length; i++) {
-          const activity = day.activities[i];
+        for (let i = driveIndex + 1; i < dayActivities.length; i++) {
+          const activity = dayActivities[i];
           if (activity.type === 'driving') continue;
 
           const coords = activity.coordinates;
@@ -600,14 +607,16 @@ export default function TripMap(props: MapProps = {}) {
   useEffect(() => {
     if (!map || !trip || !selectedDay) return;
     const day = trip.days.find(d => d.dayNumber === selectedDay);
-    if (!day || day.activities.length === 0) return;
+    if (!day) return;
+    const acts = day.activities ?? [];
+    if (acts.length === 0) return;
 
-    if (day.activities.length === 1) {
-      map.panTo(day.activities[0].coordinates);
+    if (acts.length === 1) {
+      map.panTo(acts[0].coordinates);
       map.setZoom(12);
     } else {
       const bounds = new google.maps.LatLngBounds();
-      day.activities.forEach(a => bounds.extend(a.coordinates));
+      acts.forEach(a => bounds.extend(a.coordinates));
       map.fitBounds(bounds, 80);
     }
   }, [selectedDay, map, trip]);

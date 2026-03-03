@@ -202,9 +202,11 @@ export function TripProvider({ children }: { children: ReactNode }) {
       const beforeSnapshot = payload.affected_day_numbers.map(n => prev.days.find(d => d.dayNumber === n));
       const newEndDate = safeParseDate(payload.new_end_date);
       // Normalize Claude's JSON output: date fields arrive as ISO strings, not Date objects
+      // Also normalize activities: Scout may return null or omit the field entirely
       const normalizedDays = payload.new_days.map(day => ({
         ...day,
         date: safeParseDate(day.date),
+        activities: Array.isArray(day.activities) ? day.activities : [],
       }));
       const updatedTrip = { ...prev, days: normalizedDays, endDate: newEndDate ?? prev.endDate };
       const validatedDays = validateTrip(updatedTrip);
