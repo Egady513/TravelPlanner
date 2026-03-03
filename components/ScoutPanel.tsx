@@ -13,6 +13,15 @@ interface ScoutPanelProps {
   onClose: () => void;
 }
 
+interface ActivitySuggestion {
+  dayNumber: number;
+  type: ActivityType;
+  name: string;
+  location: string;
+  why: string;
+  isDogFriendly: boolean;
+}
+
 export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const { trip, addActivity, removeActivity } = useTrip();
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -21,14 +30,6 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
   const [pendingSuggestion, setPendingSuggestion] = useState<RouteChangePayload | null>(null);
   const [showRouteModal, setShowRouteModal] = useState(false);
 
-  interface ActivitySuggestion {
-    dayNumber: number;
-    type: ActivityType;
-    name: string;
-    location: string;
-    why: string;
-    isDogFriendly: boolean;
-  }
   const [activitySuggestion, setActivitySuggestion] = useState<ActivitySuggestion | null>(null);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [activityAdded, setActivityAdded] = useState(false);
