@@ -118,7 +118,18 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
                 setActivityAdded(false);
                 continue;
               }
-              const chunk = parsed.text ?? parsed.error ?? '';
+              if (parsed.error) {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    role: 'assistant',
+                    content: '⚠️ Scout is temporarily unavailable. Please try again in a moment.',
+                  };
+                  return updated;
+                });
+                break;
+              }
+              const chunk = parsed.text ?? '';
               if (chunk) {
                 setMessages(prev => {
                   const updated = [...prev];
