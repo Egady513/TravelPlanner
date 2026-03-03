@@ -92,6 +92,7 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let streamError = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -127,7 +128,8 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
                   };
                   return updated;
                 });
-                break;
+                streamError = true;
+                break;  // exits inner for-of-lines
               }
               const chunk = parsed.text ?? '';
               if (chunk) {
@@ -142,7 +144,9 @@ export default function ScoutPanel({ isOpen, onClose }: ScoutPanelProps) {
               }
             } catch { /* skip malformed SSE chunks */ }
           }
+          if (streamError) break;  // exits outer for-of-parts
         }
+        if (streamError) break;  // exits while loop
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
