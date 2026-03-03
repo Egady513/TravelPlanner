@@ -189,19 +189,24 @@ export function TripProvider({ children }: { children: ReactNode }) {
     logRemovedItemToDb(trip.id, itemType, name, reason);
   }, [trip?.id]);
 
+  const safeParseDate = (value: unknown): Date | undefined => {
+    if (!value) return undefined;
+    if (value instanceof Date) return isNaN(value.getTime()) ? undefined : value;
+    const d = new Date(value as string);
+    return isNaN(d.getTime()) ? undefined : d;
+  };
+
   const applyRouteChange = useCallback((payload: RouteChangePayload) => {
     setTripState(prev => {
       if (!prev) return prev;
       const beforeSnapshot = payload.affected_day_numbers.map(n => prev.days.find(d => d.dayNumber === n));
-      const newEndDate = new Date(payload.new_end_date);
+      const newEndDate = safeParseDate(payload.new_end_date);
       // Normalize Claude's JSON output: date fields arrive as ISO strings, not Date objects
       const normalizedDays = payload.new_days.map(day => ({
         ...day,
-        date: day.date
-          ? (day.date instanceof Date ? day.date : new Date(day.date as unknown as string))
-          : undefined,
+        date: safeParseDate(day.date),
       }));
-      const updatedTrip = { ...prev, days: normalizedDays, endDate: newEndDate };
+      const updatedTrip = { ...prev, days: normalizedDays, endDate: newEndDate ?? prev.endDate };
       const validatedDays = validateTrip(updatedTrip);
       const finalTrip = { ...updatedTrip, days: validatedDays };
       saveScoutAction(
