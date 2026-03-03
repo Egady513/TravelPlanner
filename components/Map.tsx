@@ -114,6 +114,9 @@ export default function TripMap(props: MapProps = {}) {
   // Dashed polylines for driving activity start→end segments
   const drivingPolylinesRef = useRef<google.maps.Polyline[]>([]);
 
+  // Dotted connector lines from each drive's endLocation to the next non-driving activity
+  const activityConnectorsRef = useRef<Map<string, google.maps.Polyline>>(new Map());
+
   // Real-road route renderers (replace straight-line polylinesRef)
   const directionsRenderersRef = useRef<google.maps.DirectionsRenderer[]>([]);
   // Manual polylines for day routes (replaces DirectionsRenderer to enable hover events)
@@ -508,6 +511,62 @@ export default function TripMap(props: MapProps = {}) {
       }
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
+
+  // Dotted connector lines from each drive's endLocation to the next non-driving activity
+  useEffect(() => {
+    if (!map) return;
+
+    // Clear all existing connectors
+    activityConnectorsRef.current.forEach(p => p.setMap(null));
+    activityConnectorsRef.current.clear();
+
+    if (!trip) return;
+
+    trip.days.forEach(day => {
+      if (!isDaySelected(day.dayNumber)) return;
+
+      const drives = day.activities.filter(a => a.type === 'driving') as DrivingActivity[];
+
+      drives.forEach(drive => {
+        const driveIndex = day.activities.findIndex(a => a.id === drive.id);
+        if (driveIndex === -1) return;
+
+        // Find the first non-driving activity that comes after this drive
+        for (let i = driveIndex + 1; i < day.activities.length; i++) {
+          const activity = day.activities[i];
+          if (activity.type === 'driving') continue;
+
+          const coords = activity.coordinates;
+          if (!coords || (coords.lat === 0 && coords.lng === 0)) continue;
+
+          const connector = new google.maps.Polyline({
+            path: [
+              { lat: drive.endLocation.coordinates.lat, lng: drive.endLocation.coordinates.lng },
+              { lat: coords.lat, lng: coords.lng },
+            ],
+            geodesic: true,
+            strokeColor: '#9ca3af',
+            strokeOpacity: 0,
+            strokeWeight: 2,
+            icons: [{
+              icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, scale: 3 },
+              offset: '0',
+              repeat: '12px',
+            }],
+            map,
+          });
+
+          activityConnectorsRef.current.set(
+            `connector-${day.dayNumber}-${drive.id}-${activity.id}`,
+            connector
+          );
+
+          // Only draw one connector per drive
+          break;
+        }
+      });
+    });
+  }, [map, trip, selectedDays]);
 
   // Sync lodging group checkbox indeterminate state
   useEffect(() => {
