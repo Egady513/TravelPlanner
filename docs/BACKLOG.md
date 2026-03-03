@@ -3,7 +3,7 @@
 > **Plan file:** `docs/plans/2026-02-18-option-c-hybrid.md`
 > **v2 Design doc:** `docs/plans/2026-02-18-v2-features-design.md`
 > **Dashboard:** `status.json`
-> **Last updated:** 2026-02-27
+> **Last updated:** 2026-03-03
 
 ---
 
@@ -15,18 +15,48 @@
 
 ---
 
-## V6 Sprint — Map Routes, Scout Polish, Preference Profile (Up Next)
+## V8 Sprint — Bug Fixes + Routing Enhancements — COMPLETE ✅
+
+| ID | Task | Status | Commits |
+|----|------|--------|---------|
+| V8-1 | Fix driving routes showing as straight lines | ✅ done | `3e4dc43` |
+| V8-2 | Fix Scout error showing raw JSON | ✅ done | `1df6484`, `c9210f8` |
+| V8-3 | Fix Find Activities location hint for drive-only days | ✅ done | `516f8b2` |
+| V8-4 | Waypoint marker pins on map | ✅ done | `129b0bd` |
+| V8-5 | Auto-calculate arrival time from departure + drive hours | ✅ done | `8df05b0` |
+| V8-6 | Scout DEPARTURE TIME RULE in system prompt | ✅ done | `ed1c067` |
+| V8-7 | Scout remove-activity tool | ✅ done | `fc26759` |
+| V8-8 | Dotted connector lines from drives to activities on map | ✅ done | `6862240` |
+
+---
+
+## V7 Sprint — Activities, Scout, Driving UX — COMPLETE ✅
+
+| ID | Task | Status | Commits |
+|----|------|--------|---------|
+| V7-1 | Scout chat: auto-growing textarea (Shift+Enter for newlines) | ✅ done | `9dab772` |
+| V7-2 | Fix Scout route change → straight lines (geocode before apply) | ✅ done | `ab4e61b` |
+| V7-3 | Add 'activity' (🎡) and 'scenic' (🌄) activity types | ✅ done | `b6280e4`, `5ac1e95` |
+| V7-4 | Driving departure/arrival times in form + day panel | ✅ done | `a5b48fe` |
+| V7-5 | Camping late arrival warning in Scout system prompt | ✅ done | `44a0749` |
+| V7-6 | Waypoint stops on driving activities (form + map routing) | ✅ done | `c6af819` |
+| V7-7 | Hotel/camping auto-suggest from driving endpoint | ✅ done | `6f5c583` |
+| V7-8 | Scout WOW FACTOR — destination brief + enhanced advisor persona | ✅ done | `b8aad5d` |
+
+---
+
+## V6 Sprint — Map Routes, Scout Polish, Preference Profile — COMPLETE ✅
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| V6-1 | Map layers: lodging type + select/deselect all | 🔲 pending | Show hotel/camping pin in layers panel. Add "Select All" and "Deselect All" buttons to layer toggles. `components/Map.tsx` |
-| V6-2 | Map: drive routes between activities with hover | 🔲 pending | Draw polyline between consecutive activities in day order. Hover shows drive time + start/end location names. Based on activity order from day planner. `components/Map.tsx`, Distance Matrix API |
-| V6-3 | Add Activity form: wider / more screen space | 🔲 pending | The AddActivityForm should use more of the screen (match V4 wide modal style). `components/AddActivityForm.tsx` |
-| V6-4 | Scout: add activities to itinerary from chat | 🔲 pending | Scout should be able to suggest & add activities via chat (tool use or structured response). |
-| V6-5 | Scout: fix wrong distance in chat + bullet formatting | 🔲 pending | Bug: Scout reports wrong drive distance in chat. Also: force Scout to use bullets/lists, never full paragraphs. `app/api/scout/chat/route.ts` |
-| V6-6 | Scout: can't scroll itinerary while Scout panel open | 🔲 pending | Layout bug — Scout panel blocks scrolling of day list. `components/ScoutPanel.tsx`, `app/page.tsx` |
-| V6-7 | Scout: proactive driving warnings in chat | 🔲 pending | Scout should warn when cumulative driving exceeds maxDrivingHours or when adding a long drive ("you've driven a lot today — are you sure?"). |
-| V6-8 | Preference profile ("Customer Traits") | 🔲 pending | New preference system: sliders/ratings for activity types (museums, hiking, wineries, crossfit, shopping, etc.). Stored in Trip. Fed into Scout prompts. New wizard step or settings modal. |
+| V6-1 | Map layers: lodging type + select/deselect all | ✅ done | `06d92ae` |
+| V6-2 | Map: drive routes between activities with hover | ✅ done | `a709766`, `d1a4aac` |
+| V6-3 | Add Activity form: wider / more screen space | ✅ done | `4ab90b8`, `053d4c4` |
+| V6-4 | Scout: add activities to itinerary from chat | ✅ done | `03e4e4c`, `8d75a2a` |
+| V6-5 | Scout: fix wrong distance in chat + bullet formatting | ✅ done | `f8dea5c` |
+| V6-6 | Scout: can't scroll itinerary while Scout panel open | ✅ done | `a709766` |
+| V6-7 | Scout: proactive driving warnings in chat | ✅ done | `f8dea5c` |
+| V6-8 | Preference profile ("Customer Traits") | ✅ done | `3141d99`, `328cbe3` |
 
 ---
 
