@@ -304,7 +304,11 @@ export default function TripMap(props: MapProps = {}) {
     trip.days.forEach((day, index) => {
       if (!isDaySelected(day.dayNumber)) return;
 
-      const visibleActivities = day.activities.filter(a => a.showOnMap !== false);
+      const visibleActivities = day.activities.filter(a =>
+        a.showOnMap !== false &&
+        a.coordinates?.lat !== 0 &&
+        a.coordinates?.lng !== 0
+      );
       if (visibleActivities.length < 2) return;
 
       const waypoints = visibleActivities.slice(1, -1).map(a => ({
@@ -418,7 +422,10 @@ export default function TripMap(props: MapProps = {}) {
     const drivingActivities = allActivities as DrivingActivity[];
 
     drivingActivities.forEach(drive => {
-      const waypointKey = drive.waypoints?.map(w => `${w.coordinates.lat},${w.coordinates.lng}`).join('|') ?? '';
+      const validWaypoints = (drive.waypoints ?? []).filter(
+        w => w.coordinates && (w.coordinates.lat !== 0 || w.coordinates.lng !== 0)
+      );
+      const waypointKey = validWaypoints.map(w => `${w.coordinates.lat},${w.coordinates.lng}`).join('|');
       const cacheKey = `drive|${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}|${waypointKey}|${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
 
       const attachHover = (polyline: google.maps.Polyline) => {
@@ -486,8 +493,8 @@ export default function TripMap(props: MapProps = {}) {
           {
             origin: drive.startLocation.coordinates,
             destination: drive.endLocation.coordinates,
-            ...(drive.waypoints?.length ? {
-              waypoints: drive.waypoints.map(w => ({
+            ...(validWaypoints.length ? {
+              waypoints: validWaypoints.map(w => ({
                 location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
                 stopover: true,
               })),
