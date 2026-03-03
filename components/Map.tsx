@@ -454,11 +454,13 @@ export default function TripMap(props: MapProps = {}) {
           {
             origin: drive.startLocation.coordinates,
             destination: drive.endLocation.coordinates,
-            waypoints: drive.waypoints?.map(w => ({
-              location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
-              stopover: true,
-            })) ?? [],
-            optimizeWaypoints: false,
+            ...(drive.waypoints?.length ? {
+              waypoints: drive.waypoints.map(w => ({
+                location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
+                stopover: true,
+              })),
+              optimizeWaypoints: false,
+            } : {}),
             travelMode: google.maps.TravelMode.DRIVING,
           },
           (result, status) => {
