@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTrip } from '@/lib/store';
 import { Activity, Coordinates, ActivityType, DrivingActivity } from '@/types';
+import { DirectionsQueue } from '@/lib/directionsQueue';
 import AddActivityForm from './AddActivityForm';
 import MarkerInfoWindow from './MarkerInfoWindow';
 
@@ -126,7 +127,15 @@ export default function TripMap(props: MapProps = {}) {
   // Track route keys that have failed so we don't retry them on every re-render
   const failedRouteCacheRef = useRef<Set<string>>(new Set());
 
-  // Drive time cache and InfoWindow for hover tooltips
+  // Shared DirectionsService request queue (serialized, rate-limit safe)
+  const directionsQueueRef = useRef<DirectionsQueue>(new DirectionsQueue());
+  // Track driving route segments that permanently failed (ZERO_RESULTS)
+  const failedSegmentsRef = useRef<Set<string>>(new Set());
+  // Per-segment distance/time labels (extracted from DirectionsResult)
+  const segmentInfoCache = useRef<Map<string, string>>(new Map());
+
+  // Drive time cache and InfoWindow for hover tooltips (used by activity connectors in V9-4)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const driveTimeCache = useRef<Map<string, string>>(new Map());
   const driveTimeInfoWindow = useRef<google.maps.InfoWindow | null>(null);
 
@@ -290,7 +299,9 @@ export default function TripMap(props: MapProps = {}) {
     }
   }, [map, trip, visibleTypes, selectedDays]);
 
-  // Draw real-road routes between activities in each day
+  // Draw real-road routes between activities in each day (via shared queue)
+  // Only draw when viewing "All Days" or multiple days — single-day view uses
+  // driving routes + activity connectors instead, cutting API calls ~50%.
   useEffect(() => {
     if (!map || !trip) return;
 
@@ -302,6 +313,10 @@ export default function TripMap(props: MapProps = {}) {
     directionsRenderersRef.current = [];
     // Clear failed route cache so routes can be retried if trip data changes
     failedRouteCacheRef.current.clear();
+
+    // Skip day routes when a single day is selected (driving routes + connectors suffice)
+    const shouldDrawDayRoutes = selectedDays.length === 0 || selectedDays.length > 1;
+    if (!shouldDrawDayRoutes) return;
 
     const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
@@ -390,34 +405,36 @@ export default function TripMap(props: MapProps = {}) {
       }
       if (failedRouteCacheRef.current.has(cacheKey)) return;
 
-      const service = new google.maps.DirectionsService();
-      service.route(
-        {
-          origin,
-          destination,
-          waypoints,
-          travelMode: google.maps.TravelMode.DRIVING,
-          optimizeWaypoints: false,
-        },
-        (result, status) => {
-          if (status === 'OK' && result) {
-            directionsCache.current.set(cacheKey, result);
-            drawDayRoute(result);
-          } else {
-            console.error(`[DirectionsService] status=${status} for day ${day.dayNumber}.`);
-            failedRouteCacheRef.current.add(cacheKey);
-          }
+      // Use shared queue instead of direct DirectionsService call
+      directionsQueueRef.current.enqueue({
+        origin,
+        destination,
+        waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        optimizeWaypoints: false,
+      }).then(result => {
+        directionsCache.current.set(cacheKey, result);
+        drawDayRoute(result);
+      }).catch(status => {
+        if (String(status) === 'ZERO_RESULTS') {
+          failedRouteCacheRef.current.add(cacheKey);
         }
-      );
+        console.warn(`[DayRoute] Failed day ${day.dayNumber}: ${status}`);
+      });
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
 
-  // Dashed polylines for driving activity start→end (per-segment, no waypoints)
+  // Dashed polylines for driving activity start→end (per-segment via queue)
   useEffect(() => {
     if (!map || !trip) return;
 
     drivingPolylinesRef.current.forEach(p => p.setMap(null));
     drivingPolylinesRef.current = [];
+
+    // Cancel any pending queue requests from previous render
+    directionsQueueRef.current.clear();
+    // Clear failed segments so routes can be retried if trip data changed
+    failedSegmentsRef.current.clear();
 
     if (!visibleTypes.has('driving')) return;
 
@@ -426,9 +443,6 @@ export default function TripMap(props: MapProps = {}) {
       .filter(a => a.showOnMap !== false && a.type === 'driving' && isDaySelected(a.dayNumber));
 
     const drivingActivities = allActivities as DrivingActivity[];
-
-    // segmentIndex is incremented for every segment across all drives to stagger API calls
-    let segmentIndex = 0;
 
     drivingActivities.forEach((drive) => {
       // Skip routes with invalid coordinates (geocoding failed)
@@ -451,38 +465,19 @@ export default function TripMap(props: MapProps = {}) {
         { lat: endCoords.lat, lng: endCoords.lng, name: drive.endLocation.name },
       ];
 
-      // The hover tooltip key is per-drive (start→end total), same for all segments of this drive
-      const driveHoverKey = `drive|${startCoords.lat},${startCoords.lng}|${endCoords.lat},${endCoords.lng}`;
-
-      const attachHover = (polyline: google.maps.Polyline) => {
+      const attachSegmentHover = (polyline: google.maps.Polyline, segCacheKey: string) => {
         polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
-          if (driveTimeCache.current.has(driveHoverKey)) {
-            showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(driveHoverKey)!);
-            return;
+          // Use per-segment distance/time from DirectionsResult (cached)
+          if (segmentInfoCache.current.has(segCacheKey)) {
+            showDriveTimeTooltip(e.latLng, segmentInfoCache.current.get(segCacheKey)!);
           }
-          const service = new google.maps.DistanceMatrixService();
-          service.getDistanceMatrix({
-            origins: [drive.startLocation.coordinates],
-            destinations: [drive.endLocation.coordinates],
-            travelMode: google.maps.TravelMode.DRIVING,
-            unitSystem: google.maps.UnitSystem.IMPERIAL,
-          }, (result, status) => {
-            if (status === 'OK' && result) {
-              const element = result.rows[0]?.elements[0];
-              if (element?.status === 'OK') {
-                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}<br/><span style="font-size:11px;color:#6b7280">${drive.startLocation.name} → ${drive.endLocation.name}</span>`;
-                driveTimeCache.current.set(driveHoverKey, label);
-                showDriveTimeTooltip(e.latLng, label);
-              }
-            }
-          });
         });
         polyline.addListener('mouseout', () => {
           driveTimeInfoWindow.current?.close();
         });
       };
 
-      const makeDashedPolyline = (path: google.maps.LatLng[] | google.maps.MVCArray<google.maps.LatLng>) => {
+      const makeDashedPolyline = (path: google.maps.LatLng[] | google.maps.MVCArray<google.maps.LatLng>, segCacheKey: string) => {
         // White halo underneath — gives the "nav app" premium feel
         const halo = new google.maps.Polyline({
           path,
@@ -506,45 +501,66 @@ export default function TripMap(props: MapProps = {}) {
           zIndex: 2,
         });
         drivingPolylinesRef.current.push(polyline);
-        attachHover(polyline);
+        attachSegmentHover(polyline, segCacheKey);
       };
 
-      // Iterate over consecutive pairs of stops — one DirectionsService call per pair
+      // Iterate over consecutive pairs of stops — one DirectionsService call per pair via queue
       for (let i = 0; i < stops.length - 1; i++) {
         const segFrom = stops[i];
         const segTo = stops[i + 1];
         const segCacheKey = `seg|${segFrom.lat},${segFrom.lng}|${segTo.lat},${segTo.lng}`;
-        const currentSegmentIndex = segmentIndex;
-        segmentIndex++;
 
+        // Use directions cache if available
         if (directionsCache.current.has(segCacheKey)) {
-          makeDashedPolyline(directionsCache.current.get(segCacheKey)!.routes[0].overview_path);
-        } else {
-          // Stagger requests 150ms apart to avoid OVER_QUERY_LIMIT
-          setTimeout(() => {
-            const dirService = new google.maps.DirectionsService();
-            dirService.route(
-              {
-                origin: new google.maps.LatLng(segFrom.lat, segFrom.lng),
-                destination: new google.maps.LatLng(segTo.lat, segTo.lng),
-                travelMode: google.maps.TravelMode.DRIVING,
-              },
-              (result, status) => {
-                if (status === 'OK' && result) {
-                  directionsCache.current.set(segCacheKey, result);
-                  makeDashedPolyline(result.routes[0].overview_path);
-                } else {
-                  console.error(`[Map] DirectionsService status=${status} for drive "${drive.name}" segment (${segFrom.name} → ${segTo.name})`);
-                  // Fallback: straight dashed line for just this segment
-                  makeDashedPolyline([
-                    new google.maps.LatLng(segFrom.lat, segFrom.lng),
-                    new google.maps.LatLng(segTo.lat, segTo.lng),
-                  ]);
-                }
-              }
-            );
-          }, currentSegmentIndex * 150);
+          makeDashedPolyline(directionsCache.current.get(segCacheKey)!.routes[0].overview_path, segCacheKey);
+          continue;
         }
+
+        // Skip permanently failed segments (draw straight-line fallback)
+        if (failedSegmentsRef.current.has(segCacheKey)) {
+          makeDashedPolyline([
+            new google.maps.LatLng(segFrom.lat, segFrom.lng),
+            new google.maps.LatLng(segTo.lat, segTo.lng),
+          ], segCacheKey);
+          continue;
+        }
+
+        // Enqueue via shared queue (serialized, rate-limit safe)
+        const capturedFrom = segFrom;
+        const capturedTo = segTo;
+        const capturedKey = segCacheKey;
+
+        directionsQueueRef.current.enqueue({
+          origin: new google.maps.LatLng(capturedFrom.lat, capturedFrom.lng),
+          destination: new google.maps.LatLng(capturedTo.lat, capturedTo.lng),
+          travelMode: google.maps.TravelMode.DRIVING,
+        }).then(result => {
+          directionsCache.current.set(capturedKey, result);
+
+          // Extract per-segment distance/time from DirectionsResult
+          const leg = result.routes[0]?.legs[0];
+          if (leg?.distance && leg?.duration) {
+            const label = `🚗 ${leg.duration.text} · ${leg.distance.text}<br/><span style="font-size:11px;color:#6b7280">${capturedFrom.name} → ${capturedTo.name}</span>`;
+            segmentInfoCache.current.set(capturedKey, label);
+          }
+
+          makeDashedPolyline(result.routes[0].overview_path, capturedKey);
+        }).catch(status => {
+          if (status === 'ZERO_RESULTS') {
+            // Genuine no-route: mark as permanently failed and draw straight-line fallback
+            console.warn(`[DrivingRoute] No route: ${capturedFrom.name} → ${capturedTo.name}`);
+            failedSegmentsRef.current.add(capturedKey);
+            const fallbackLabel = `⚠️ No route found<br/><span style="font-size:11px;color:#6b7280">${capturedFrom.name} → ${capturedTo.name}</span>`;
+            segmentInfoCache.current.set(capturedKey, fallbackLabel);
+            makeDashedPolyline([
+              new google.maps.LatLng(capturedFrom.lat, capturedFrom.lng),
+              new google.maps.LatLng(capturedTo.lat, capturedTo.lng),
+            ], capturedKey);
+          } else {
+            // Transient error after retries — do NOT draw straight line; will retry on next render
+            console.error(`[DrivingRoute] Failed after retries: ${capturedFrom.name} → ${capturedTo.name} (${status})`);
+          }
+        });
       }
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
