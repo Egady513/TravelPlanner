@@ -134,8 +134,7 @@ export default function TripMap(props: MapProps = {}) {
   // Per-segment distance/time labels (extracted from DirectionsResult)
   const segmentInfoCache = useRef<Map<string, string>>(new Map());
 
-  // Drive time cache and InfoWindow for hover tooltips (used by activity connectors in V9-4)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Drive time cache and InfoWindow for hover tooltips
   const driveTimeCache = useRef<Map<string, string>>(new Map());
   const driveTimeInfoWindow = useRef<google.maps.InfoWindow | null>(null);
 
@@ -565,7 +564,9 @@ export default function TripMap(props: MapProps = {}) {
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
 
-  // Dotted connector lines from each drive's endLocation to the next non-driving activity
+  // Dotted connector lines between consecutive activities within each day.
+  // Connects: drive.endLocation → next activity, AND consecutive non-driving activities
+  // (e.g. hotel → rodeo → dinner). Each connector has a hover tooltip showing distance/time.
   useEffect(() => {
     if (!map) return;
 
@@ -578,49 +579,114 @@ export default function TripMap(props: MapProps = {}) {
     trip.days.forEach(day => {
       if (!isDaySelected(day.dayNumber)) return;
 
-      const dayActivities = day.activities ?? [];
-      const drives = dayActivities.filter(a => a.type === 'driving') as DrivingActivity[];
+      const dayActivities = (day.activities ?? []).filter(a =>
+        a.showOnMap !== false &&
+        a.coordinates?.lat !== 0 &&
+        a.coordinates?.lng !== 0
+      );
 
-      drives.forEach(drive => {
-        const driveIndex = dayActivities.findIndex(a => a.id === drive.id);
-        if (driveIndex === -1) return;
+      // Build an ordered chain of connection points.
+      // For driving activities, use endLocation (start→end is handled by the driving route polylines).
+      // For non-driving activities, use the activity's coordinates.
+      interface ConnPoint {
+        id: string;
+        coords: Coordinates;
+        name: string;
+      }
+      const points: ConnPoint[] = [];
 
-        // Find the first non-driving activity that comes after this drive
-        for (let i = driveIndex + 1; i < dayActivities.length; i++) {
-          const activity = dayActivities[i];
-          if (activity.type === 'driving') continue;
-
-          const coords = activity.coordinates;
-          if (!coords || (coords.lat === 0 && coords.lng === 0)) continue;
-
-          const connector = new google.maps.Polyline({
-            path: [
-              { lat: drive.endLocation.coordinates.lat, lng: drive.endLocation.coordinates.lng },
-              { lat: coords.lat, lng: coords.lng },
-            ],
-            geodesic: true,
-            strokeColor: '#9ca3af',
-            strokeOpacity: 0,
-            strokeWeight: 2,
-            icons: [{
-              icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, scale: 3 },
-              offset: '0',
-              repeat: '12px',
-            }],
-            map,
+      dayActivities.forEach(activity => {
+        if (activity.type === 'driving') {
+          const drive = activity as DrivingActivity;
+          const endCoords = drive.endLocation?.coordinates;
+          if (endCoords && (endCoords.lat !== 0 || endCoords.lng !== 0)) {
+            points.push({
+              id: `${drive.id}-end`,
+              coords: endCoords,
+              name: drive.endLocation.name,
+            });
+          }
+        } else {
+          points.push({
+            id: activity.id,
+            coords: activity.coordinates,
+            name: activity.name,
           });
-
-          activityConnectorsRef.current.set(
-            `connector-${day.dayNumber}-${drive.id}-${activity.id}`,
-            connector
-          );
-
-          // Only draw one connector per drive
-          break;
         }
       });
+
+      // Draw dotted connectors between consecutive points
+      for (let i = 0; i < points.length - 1; i++) {
+        const from = points[i];
+        const to = points[i + 1];
+        const connectorKey = `connector-${day.dayNumber}-${from.id}-${to.id}`;
+
+        // Dotted gray connector line
+        const connector = new google.maps.Polyline({
+          path: [
+            { lat: from.coords.lat, lng: from.coords.lng },
+            { lat: to.coords.lat, lng: to.coords.lng },
+          ],
+          geodesic: true,
+          strokeColor: '#9ca3af',
+          strokeOpacity: 0,
+          strokeWeight: 2,
+          icons: [{
+            icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, scale: 3 },
+            offset: '0',
+            repeat: '12px',
+          }],
+          map,
+        });
+        activityConnectorsRef.current.set(connectorKey, connector);
+
+        // Invisible hit-area polyline for hover (wider for easy targeting)
+        const hitArea = new google.maps.Polyline({
+          path: [
+            { lat: from.coords.lat, lng: from.coords.lng },
+            { lat: to.coords.lat, lng: to.coords.lng },
+          ],
+          strokeColor: '#9ca3af',
+          strokeOpacity: 0,
+          strokeWeight: 14,
+          map,
+          zIndex: 3,
+        });
+        activityConnectorsRef.current.set(`${connectorKey}-hit`, hitArea);
+
+        // Hover tooltip: lazy fetch distance/time via DistanceMatrixService (cached)
+        const distCacheKey = `dist|${from.coords.lat},${from.coords.lng}|${to.coords.lat},${to.coords.lng}`;
+        const capturedFrom = from;
+        const capturedTo = to;
+
+        hitArea.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
+          if (driveTimeCache.current.has(distCacheKey)) {
+            showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(distCacheKey)!);
+            return;
+          }
+          const service = new google.maps.DistanceMatrixService();
+          service.getDistanceMatrix({
+            origins: [{ lat: capturedFrom.coords.lat, lng: capturedFrom.coords.lng }],
+            destinations: [{ lat: capturedTo.coords.lat, lng: capturedTo.coords.lng }],
+            travelMode: google.maps.TravelMode.DRIVING,
+            unitSystem: google.maps.UnitSystem.IMPERIAL,
+          }, (result, status) => {
+            if (status === 'OK' && result) {
+              const element = result.rows[0]?.elements[0];
+              if (element?.status === 'OK') {
+                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}<br/><span style="font-size:11px;color:#6b7280">${capturedFrom.name} → ${capturedTo.name}</span>`;
+                driveTimeCache.current.set(distCacheKey, label);
+                showDriveTimeTooltip(e.latLng, label);
+              }
+            }
+          });
+        });
+        hitArea.addListener('mouseout', () => {
+          driveTimeInfoWindow.current?.close();
+        });
+      }
     });
-  }, [map, trip, selectedDays]);
+  }, [map, trip, selectedDays, showDriveTimeTooltip]);
 
   // Sync lodging group checkbox indeterminate state
   useEffect(() => {
