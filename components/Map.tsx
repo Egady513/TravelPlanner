@@ -535,10 +535,10 @@ export default function TripMap(props: MapProps = {}) {
                   makeDashedPolyline(result.routes[0].overview_path);
                 } else {
                   console.error(`[Map] DirectionsService status=${status} for drive "${drive.name}" segment (${segFrom.name} → ${segTo.name})`);
-                  // Fallback: straight dashed line for the full drive start→end
+                  // Fallback: straight dashed line for just this segment
                   makeDashedPolyline([
-                    new google.maps.LatLng(startCoords.lat, startCoords.lng),
-                    new google.maps.LatLng(endCoords.lat, endCoords.lng),
+                    new google.maps.LatLng(segFrom.lat, segFrom.lng),
+                    new google.maps.LatLng(segTo.lat, segTo.lng),
                   ]);
                 }
               }
