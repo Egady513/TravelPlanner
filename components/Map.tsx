@@ -144,6 +144,18 @@ export default function TripMap(props: MapProps = {}) {
   const isDaySelected = (dayNum: number) =>
     selectedDays.length === 0 || selectedDays.includes(dayNum);
 
+  // Helper: format "Day 6 · Sun, Jun 7" from a day number
+  const formatDayLabel = useCallback((dayNumber: number): string => {
+    const day = trip?.days.find(d => d.dayNumber === dayNumber);
+    if (day?.date) {
+      const d = new Date(day.date);
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `Day ${dayNumber} · ${weekday}, ${monthDay}`;
+    }
+    return `Day ${dayNumber}`;
+  }, [trip]);
+
   // Helper: show a drive time InfoWindow at a given position
   const showDriveTimeTooltip = useCallback((position: google.maps.LatLng | null, label: string) => {
     if (!map || !position) return;
@@ -360,7 +372,8 @@ export default function TripMap(props: MapProps = {}) {
         const mins = Math.floor((totalSeconds % 3600) / 60);
         const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
         const distMi = (totalDistance * 0.000621371).toFixed(0);
-        const hoverLabel = `🚗 ${timeStr} · ${distMi} mi<br/><span style="font-size:11px;color:#6b7280">Day ${day.dayNumber}: ${startName} → ${endName}</span>`;
+        const dayLabel = formatDayLabel(day.dayNumber);
+        const hoverLabel = `🚗 ${timeStr} · ${distMi} mi<br/><span style="font-size:11px;color:#6b7280">${dayLabel}: ${startName} → ${endName}</span>`;
 
         // Dashed visible polyline (day color)
         const dashedLine = new google.maps.Polyline({
@@ -421,7 +434,7 @@ export default function TripMap(props: MapProps = {}) {
         console.warn(`[DayRoute] Failed day ${day.dayNumber}: ${status}`);
       });
     });
-  }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
+  }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip, formatDayLabel]);
 
   // Dashed polylines for driving activity start→end (per-segment via queue)
   useEffect(() => {
@@ -539,7 +552,8 @@ export default function TripMap(props: MapProps = {}) {
           // Extract per-segment distance/time from DirectionsResult
           const leg = result.routes[0]?.legs[0];
           if (leg?.distance && leg?.duration) {
-            const label = `🚗 ${leg.duration.text} · ${leg.distance.text}<br/><span style="font-size:11px;color:#6b7280">${capturedFrom.name} → ${capturedTo.name}</span>`;
+            const drvDayLabel = formatDayLabel(drive.dayNumber);
+            const label = `🚗 ${leg.duration.text} · ${leg.distance.text}<br/><span style="font-size:11px;color:#6b7280">${drvDayLabel}: ${capturedFrom.name} → ${capturedTo.name}</span>`;
             segmentInfoCache.current.set(capturedKey, label);
           }
 
@@ -549,7 +563,8 @@ export default function TripMap(props: MapProps = {}) {
             // Genuine no-route: mark as permanently failed and draw straight-line fallback
             console.warn(`[DrivingRoute] No route: ${capturedFrom.name} → ${capturedTo.name}`);
             failedSegmentsRef.current.add(capturedKey);
-            const fallbackLabel = `⚠️ No route found<br/><span style="font-size:11px;color:#6b7280">${capturedFrom.name} → ${capturedTo.name}</span>`;
+            const fallbackDayLabel = formatDayLabel(drive.dayNumber);
+            const fallbackLabel = `⚠️ No route found<br/><span style="font-size:11px;color:#6b7280">${fallbackDayLabel}: ${capturedFrom.name} → ${capturedTo.name}</span>`;
             segmentInfoCache.current.set(capturedKey, fallbackLabel);
             makeDashedPolyline([
               new google.maps.LatLng(capturedFrom.lat, capturedFrom.lng),
@@ -562,7 +577,7 @@ export default function TripMap(props: MapProps = {}) {
         });
       }
     });
-  }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
+  }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip, formatDayLabel]);
 
   // Dotted connector lines between consecutive activities within each day.
   // Connects: drive.endLocation → next activity, AND consecutive non-driving activities
@@ -674,7 +689,8 @@ export default function TripMap(props: MapProps = {}) {
             if (status === 'OK' && result) {
               const element = result.rows[0]?.elements[0];
               if (element?.status === 'OK') {
-                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}<br/><span style="font-size:11px;color:#6b7280">${capturedFrom.name} → ${capturedTo.name}</span>`;
+                const connDayLabel = formatDayLabel(day.dayNumber);
+                const label = `🚗 ${element.duration?.text} · ${element.distance?.text}<br/><span style="font-size:11px;color:#6b7280">${connDayLabel}: ${capturedFrom.name} → ${capturedTo.name}</span>`;
                 driveTimeCache.current.set(distCacheKey, label);
                 showDriveTimeTooltip(e.latLng, label);
               }
@@ -686,7 +702,7 @@ export default function TripMap(props: MapProps = {}) {
         });
       }
     });
-  }, [map, trip, selectedDays, showDriveTimeTooltip]);
+  }, [map, trip, selectedDays, showDriveTimeTooltip, formatDayLabel]);
 
   // Sync lodging group checkbox indeterminate state
   useEffect(() => {
