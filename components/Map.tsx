@@ -412,7 +412,7 @@ export default function TripMap(props: MapProps = {}) {
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
 
-  // Dashed polylines for driving activity start→end
+  // Dashed polylines for driving activity start→end (per-segment, no waypoints)
   useEffect(() => {
     if (!map || !trip) return;
 
@@ -427,7 +427,10 @@ export default function TripMap(props: MapProps = {}) {
 
     const drivingActivities = allActivities as DrivingActivity[];
 
-    drivingActivities.forEach((drive, index) => {
+    // segmentIndex is incremented for every segment across all drives to stagger API calls
+    let segmentIndex = 0;
+
+    drivingActivities.forEach((drive) => {
       // Skip routes with invalid coordinates (geocoding failed)
       const startCoords = drive.startLocation.coordinates;
       const endCoords = drive.endLocation.coordinates;
@@ -440,13 +443,21 @@ export default function TripMap(props: MapProps = {}) {
       const validWaypoints = (drive.waypoints ?? []).filter(
         w => w.coordinates && (w.coordinates.lat !== 0 || w.coordinates.lng !== 0)
       );
-      const waypointKey = validWaypoints.map(w => `${w.coordinates.lat},${w.coordinates.lng}`).join('|');
-      const cacheKey = `drive|${drive.startLocation.coordinates.lat},${drive.startLocation.coordinates.lng}|${waypointKey}|${drive.endLocation.coordinates.lat},${drive.endLocation.coordinates.lng}`;
+
+      // Build the full stops array: start, ...waypoints, end
+      const stops: { lat: number; lng: number; name: string }[] = [
+        { lat: startCoords.lat, lng: startCoords.lng, name: drive.startLocation.name },
+        ...validWaypoints.map(w => ({ lat: w.coordinates.lat, lng: w.coordinates.lng, name: w.name })),
+        { lat: endCoords.lat, lng: endCoords.lng, name: drive.endLocation.name },
+      ];
+
+      // The hover tooltip key is per-drive (start→end total), same for all segments of this drive
+      const driveHoverKey = `drive|${startCoords.lat},${startCoords.lng}|${endCoords.lat},${endCoords.lng}`;
 
       const attachHover = (polyline: google.maps.Polyline) => {
         polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
-          if (driveTimeCache.current.has(cacheKey)) {
-            showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(cacheKey)!);
+          if (driveTimeCache.current.has(driveHoverKey)) {
+            showDriveTimeTooltip(e.latLng, driveTimeCache.current.get(driveHoverKey)!);
             return;
           }
           const service = new google.maps.DistanceMatrixService();
@@ -460,7 +471,7 @@ export default function TripMap(props: MapProps = {}) {
               const element = result.rows[0]?.elements[0];
               if (element?.status === 'OK') {
                 const label = `🚗 ${element.duration?.text} · ${element.distance?.text}<br/><span style="font-size:11px;color:#6b7280">${drive.startLocation.name} → ${drive.endLocation.name}</span>`;
-                driveTimeCache.current.set(cacheKey, label);
+                driveTimeCache.current.set(driveHoverKey, label);
                 showDriveTimeTooltip(e.latLng, label);
               }
             }
@@ -498,42 +509,42 @@ export default function TripMap(props: MapProps = {}) {
         attachHover(polyline);
       };
 
-      // Use cached route if available
-      if (directionsCache.current.has(cacheKey)) {
-        makeDashedPolyline(directionsCache.current.get(cacheKey)!.routes[0].overview_path);
-      } else {
-        // Stagger requests 150ms apart to avoid OVER_QUERY_LIMIT with many drives
-        setTimeout(() => {
-          // Fetch real road path, fall back to straight line on failure
-          const dirService = new google.maps.DirectionsService();
-          dirService.route(
-            {
-              origin: drive.startLocation.coordinates,
-              destination: drive.endLocation.coordinates,
-              ...(validWaypoints.length ? {
-                waypoints: validWaypoints.map(w => ({
-                  location: new google.maps.LatLng(w.coordinates.lat, w.coordinates.lng),
-                  stopover: true,
-                })),
-                optimizeWaypoints: false,
-              } : {}),
-              travelMode: google.maps.TravelMode.DRIVING,
-            },
-            (result, status) => {
-              if (status === 'OK' && result) {
-                directionsCache.current.set(cacheKey, result);
-                makeDashedPolyline(result.routes[0].overview_path);
-              } else {
-                console.error(`[Map] DirectionsService status=${status} for drive "${drive.name}" (${drive.startLocation.name} → ${drive.endLocation.name})`);
-                // Fallback: straight dashed line
-                makeDashedPolyline([
-                  new google.maps.LatLng(drive.startLocation.coordinates.lat, drive.startLocation.coordinates.lng),
-                  new google.maps.LatLng(drive.endLocation.coordinates.lat, drive.endLocation.coordinates.lng),
-                ]);
+      // Iterate over consecutive pairs of stops — one DirectionsService call per pair
+      for (let i = 0; i < stops.length - 1; i++) {
+        const segFrom = stops[i];
+        const segTo = stops[i + 1];
+        const segCacheKey = `seg|${segFrom.lat},${segFrom.lng}|${segTo.lat},${segTo.lng}`;
+        const currentSegmentIndex = segmentIndex;
+        segmentIndex++;
+
+        if (directionsCache.current.has(segCacheKey)) {
+          makeDashedPolyline(directionsCache.current.get(segCacheKey)!.routes[0].overview_path);
+        } else {
+          // Stagger requests 150ms apart to avoid OVER_QUERY_LIMIT
+          setTimeout(() => {
+            const dirService = new google.maps.DirectionsService();
+            dirService.route(
+              {
+                origin: new google.maps.LatLng(segFrom.lat, segFrom.lng),
+                destination: new google.maps.LatLng(segTo.lat, segTo.lng),
+                travelMode: google.maps.TravelMode.DRIVING,
+              },
+              (result, status) => {
+                if (status === 'OK' && result) {
+                  directionsCache.current.set(segCacheKey, result);
+                  makeDashedPolyline(result.routes[0].overview_path);
+                } else {
+                  console.error(`[Map] DirectionsService status=${status} for drive "${drive.name}" segment (${segFrom.name} → ${segTo.name})`);
+                  // Fallback: straight dashed line for the full drive start→end
+                  makeDashedPolyline([
+                    new google.maps.LatLng(startCoords.lat, startCoords.lng),
+                    new google.maps.LatLng(endCoords.lat, endCoords.lng),
+                  ]);
+                }
               }
-            }
-          );
-        }, index * 150);
+            );
+          }, currentSegmentIndex * 150);
+        }
       }
     });
   }, [map, trip, visibleTypes, selectedDays, showDriveTimeTooltip]);
