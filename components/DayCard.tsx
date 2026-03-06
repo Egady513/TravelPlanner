@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Day } from '@/types';
+import { Day, DrivingActivity } from '@/types';
 import { useTrip } from '@/lib/store';
 import { fetchWeatherForLocation, getWeatherEmoji } from '@/lib/weather';
 import { getValidationEmoji } from '@/lib/validation';
@@ -19,6 +19,8 @@ const activityIcons: Record<string, string> = {
   camping: '⛺',
   park: '🏞️',
   driving: '🚗',
+  activity: '🎡',
+  scenic: '🌄',
 };
 
 const activityColors: Record<string, string> = {
@@ -121,6 +123,16 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
                 <p className={`font-medium truncate ${activityColors[activity.type]}`}>
                   {activity.name}
                 </p>
+                {activity.type === 'driving' && (activity as DrivingActivity).waypoints?.length ? (
+                  <div className="mt-0.5 space-y-0.5">
+                    {(activity as DrivingActivity).waypoints!.map((wp, i) => (
+                      <div key={i} className="flex items-center gap-1 text-xs text-gray-400">
+                        <span className="text-gray-300 flex-shrink-0">↳</span>
+                        <span className="truncate">📍 {wp.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {activity.isDogFriendly && (
                   <span className="text-xs text-green-600">🐕 Dog-friendly</span>
                 )}
