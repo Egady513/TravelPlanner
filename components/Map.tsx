@@ -528,6 +528,15 @@ export default function TripMap(props: MapProps = {}) {
 
         // Use directions cache if available
         if (directionsCache.current.has(segCacheKey)) {
+          // Backfill hover label if missing (e.g. after re-render)
+          if (!segmentInfoCache.current.has(segCacheKey)) {
+            const cached = directionsCache.current.get(segCacheKey)!;
+            const leg = cached.routes[0]?.legs[0];
+            if (leg?.distance && leg?.duration) {
+              const drvDayLabel = formatDayLabel(drive.dayNumber);
+              segmentInfoCache.current.set(segCacheKey, `🚗 ${leg.duration.text} · ${leg.distance.text}<br/><span style="font-size:11px;color:#6b7280">${drvDayLabel}: ${segFrom.name} → ${segTo.name}</span>`);
+            }
+          }
           makeDashedPolyline(directionsCache.current.get(segCacheKey)!.routes[0].overview_path, segCacheKey);
           continue;
         }
