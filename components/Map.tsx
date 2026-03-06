@@ -373,7 +373,11 @@ export default function TripMap(props: MapProps = {}) {
         const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
         const distMi = (totalDistance * 0.000621371).toFixed(0);
         const dayLabel = formatDayLabel(day.dayNumber);
-        const hoverLabel = `🚗 ${timeStr} · ${distMi} mi<br/><span style="font-size:11px;color:#6b7280">${dayLabel}: ${startName} → ${endName}</span>`;
+        const activityLines = (day.activities ?? [])
+          .filter(a => a.showOnMap !== false)
+          .map(a => `${activityEmojis[a.type as ActivityType] ?? '📍'} ${a.name}`)
+          .join('<br/>');
+        const hoverLabel = `🚗 ${timeStr} · ${distMi} mi<br/><span style="font-size:11px;color:#6b7280">${dayLabel}: ${startName} → ${endName}</span>${activityLines ? `<br/><div style="margin-top:4px;font-size:11px;color:#374151;line-height:1.6">${activityLines}</div>` : ''}`;
 
         // Dashed visible polyline (day color)
         const dashedLine = new google.maps.Polyline({
