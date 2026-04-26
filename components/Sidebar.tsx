@@ -51,23 +51,29 @@ export default function Sidebar() {
     return `${start} - ${end}`;
   };
 
+  const plannedDays = trip.days.filter(day => day.activities.some(activity => !activity.isContinuingStay)).length;
+  const issueDays = trip.days.filter(day => day.validationStatus.level !== 'success').length;
+
   return (
     <>
       {/* Desktop Sidebar */}
       <div
         className={`hidden md:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
-          isCollapsed ? 'w-12' : 'w-80'
+          isCollapsed ? 'w-12' : 'w-96'
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 truncate">{trip.name}</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">Trip command center</p>
+              <h2 className="font-bold text-gray-900 truncate mt-1">{trip.name}</h2>
               <p className="text-xs text-gray-500">{formatDateRange()}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {trip.days.length} {trip.days.length === 1 ? 'day' : 'days'}
-              </p>
+              <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                <span>{trip.days.length} {trip.days.length === 1 ? 'day' : 'days'}</span>
+                <span>{plannedDays} planned</span>
+                {issueDays > 0 && <span>{issueDays} need review</span>}
+              </div>
             </div>
           )}
           <button
@@ -121,13 +127,13 @@ export default function Sidebar() {
             <div className="p-4 border-t border-gray-200">
               <button
                 onClick={() => {
-                  if (confirm('Are you sure you want to clear this trip? This cannot be undone.')) {
+                  if (confirm('Close this trip view and return home? Your trip stays saved in Supabase.')) {
                     clearTrip();
                   }
                 }}
                 className="w-full text-sm text-red-600 hover:text-red-700 hover:bg-red-50 py-2 px-3 rounded-md transition-colors"
               >
-                Clear Trip
+                Close Trip View
               </button>
             </div>
           </>
@@ -170,13 +176,13 @@ export default function Sidebar() {
             </div>
             <button
               onClick={() => {
-                if (confirm('Are you sure you want to clear this trip?')) {
+                if (confirm('Close this trip view and return home? Your trip stays saved in Supabase.')) {
                   clearTrip();
                 }
               }}
               className="text-sm text-red-600 hover:text-red-700"
             >
-              Clear
+              Close
             </button>
           </div>
 

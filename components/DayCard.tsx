@@ -30,6 +30,8 @@ const activityColors: Record<string, string> = {
   camping: 'text-amber-700',
   park: 'text-emerald-700',
   driving: 'text-gray-600',
+  activity: 'text-fuchsia-600',
+  scenic: 'text-cyan-700',
 };
 
 function getDogStatus(activities: Day['activities']) {
@@ -38,9 +40,40 @@ function getDogStatus(activities: Day['activities']) {
   return hasNoDogActivity ? 'no-dog' : 'dog';
 }
 
+function formatDriveHours(hours: number) {
+  if (hours <= 0) return null;
+  return hours % 1 === 0 ? `${hours.toFixed(0)}h` : `${hours.toFixed(1)}h`;
+}
+
 export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
   const { setSelectedDay, removeActivity, setDayWeather } = useTrip();
   const dogStatus = getDogStatus(day.activities);
+  const plannedActivities = day.activities.filter(a => !a.isContinuingStay);
+  const drivingActivities = plannedActivities.filter(a => a.type === 'driving') as DrivingActivity[];
+  const nonDrivingActivities = plannedActivities.filter(a => a.type !== 'driving');
+  const firstDrive = drivingActivities[0];
+  const lastDrive = drivingActivities[drivingActivities.length - 1];
+  const totalDriveHours = drivingActivities.reduce((sum, drive) => sum + (drive.estimatedDriveHours ?? 0), 0);
+  const routeStops = drivingActivities.reduce((sum, drive) => sum + (drive.waypoints?.length ?? 0), 0);
+  const destinationName =
+    lastDrive?.endLocation?.name ??
+    nonDrivingActivities[nonDrivingActivities.length - 1]?.name ??
+    '';
+  const routeSummary =
+    firstDrive && lastDrive
+      ? `${firstDrive.startLocation.name} -> ${lastDrive.endLocation.name}`
+      : '';
+  const visibleHighlights = nonDrivingActivities.slice(0, 3);
+  const remainingHighlights = Math.max(nonDrivingActivities.length - visibleHighlights.length, 0);
+  const planningStatus = day.validationStatus.level === 'error'
+    ? 'Needs attention'
+    : day.validationStatus.level === 'warning'
+      ? 'Worth reviewing'
+      : plannedActivities.length === 0
+        ? 'Still unplanned'
+        : drivingActivities.length > 0 && nonDrivingActivities.length === 0
+          ? 'Route day'
+          : 'Ready to shape';
 
   useEffect(() => {
     if (day.weather || !day.date || day.activities.length === 0) return;
@@ -64,35 +97,40 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
 
   return (
     <div
-      className={`border rounded-lg p-3 cursor-pointer transition-all ${
+      className={`border rounded-xl p-4 cursor-pointer transition-all ${
         isSelected
-          ? 'border-blue-500 bg-blue-50 shadow-md'
-          : 'border-gray-200 hover:border-gray-300 bg-white'
+          ? 'border-orange-400 bg-orange-50 shadow-md'
+          : 'border-gray-200 hover:border-orange-200 hover:shadow-sm bg-white'
       }`}
       onClick={() => {
         setSelectedDay(day.dayNumber);
         onSelect?.();
       }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h3 className="font-semibold text-gray-900">Day {day.dayNumber}</h3>
-          {day.date && (
-            <p className="text-xs text-gray-500">{formatDate(day.date)}</p>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+            Day {day.dayNumber}
+          </p>
+          {day.date ? (
+            <h3 className="font-semibold text-gray-900">{formatDate(day.date)}</h3>
+          ) : (
+            <h3 className="font-semibold text-gray-900">Plan this day</h3>
           )}
+          <p className="text-sm text-gray-500 mt-0.5">{planningStatus}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <span className="text-sm text-gray-500">
-            {day.activities.filter(a => !a.isContinuingStay).length} {day.activities.filter(a => !a.isContinuingStay).length === 1 ? 'activity' : 'activities'}
+            {plannedActivities.length} {plannedActivities.length === 1 ? 'item' : 'items'}
           </span>
           {dogStatus === 'dog' && (
             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-              🐕 Dog
+              Dog OK
             </span>
           )}
           {dogStatus === 'no-dog' && (
             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-              🚫 No Dog
+              Dog conflict
             </span>
           )}
           {day.validationStatus.level !== 'success' && (
@@ -108,9 +146,69 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
         </div>
       </div>
 
-      {day.activities.filter(a => !a.isContinuingStay).length > 0 && (
-        <div className="space-y-1.5 mt-2">
-          {day.activities.filter(a => !a.isContinuingStay).map((activity) => (
+      {destinationName && (
+        <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Destination</p>
+          <p className="text-sm font-semibold text-gray-900 mt-1 truncate">{destinationName}</p>
+          {routeSummary && (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mt-3">Route</p>
+              <p className="text-xs text-gray-600 mt-1 line-clamp-2">{routeSummary}</p>
+              <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                {formatDriveHours(totalDriveHours) && <span>{formatDriveHours(totalDriveHours)} driving</span>}
+                {routeStops > 0 && <span>{routeStops} route stop{routeStops === 1 ? '' : 's'}</span>}
+                {nonDrivingActivities.length > 0 && (
+                  <span>{nonDrivingActivities.length} things to do</span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {visibleHighlights.length > 0 && (
+        <div className="mb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-1.5">Highlights</p>
+          <div className="space-y-1.5">
+            {visibleHighlights.map((activity) => (
+              <div
+                key={activity.id}
+                className="flex items-start gap-2 text-sm group"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="text-base flex-shrink-0">
+                  {activityIcons[activity.type] ?? '📍'}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium truncate ${activityColors[activity.type] ?? 'text-gray-700'}`}>
+                    {activity.name}
+                  </p>
+                  {activity.isDogFriendly && (
+                    <span className="text-xs text-green-600">Dog-friendly</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => removeActivity(activity.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 text-xs"
+                  aria-label="Remove activity"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          {remainingHighlights > 0 && (
+            <p className="text-xs text-gray-400 mt-2">
+              +{remainingHighlights} more planned stop{remainingHighlights === 1 ? '' : 's'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {drivingActivities.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Route blocks</p>
+          {drivingActivities.map((activity) => (
             <div
               key={activity.id}
               className="flex items-start gap-2 text-sm group"
@@ -120,27 +218,30 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
                 {activityIcons[activity.type]}
               </span>
               <div className="flex-1 min-w-0">
-                <p className={`font-medium truncate ${activityColors[activity.type]}`}>
-                  {activity.name}
+                <p className={`font-medium truncate ${activityColors[activity.type] ?? 'text-gray-700'}`}>
+                  {activity.startLocation.name} {'->'} {activity.endLocation.name}
                 </p>
-                {activity.type === 'driving' && (activity as DrivingActivity).waypoints?.length ? (
-                  <div className="mt-0.5 space-y-0.5">
-                    {(activity as DrivingActivity).waypoints!.map((wp, i) => (
+                <div className="flex flex-wrap gap-2 text-xs text-gray-400 mt-0.5">
+                  {activity.estimatedDriveHours && <span>{formatDriveHours(activity.estimatedDriveHours)}</span>}
+                  {activity.estimatedDriveDistance && <span>{activity.estimatedDriveDistance}</span>}
+                  {activity.departureTime && <span>leave {activity.departureTime}</span>}
+                  {activity.arrivalTime && <span>arrive {activity.arrivalTime}</span>}
+                </div>
+                {activity.waypoints?.length ? (
+                  <div className="mt-1 space-y-0.5">
+                    {activity.waypoints.map((wp, i) => (
                       <div key={i} className="flex items-center gap-1 text-xs text-gray-400">
                         <span className="text-gray-300 flex-shrink-0">↳</span>
-                        <span className="truncate">📍 {wp.name}</span>
+                        <span className="truncate">{wp.name}</span>
                       </div>
                     ))}
                   </div>
                 ) : null}
-                {activity.isDogFriendly && (
-                  <span className="text-xs text-green-600">🐕 Dog-friendly</span>
-                )}
               </div>
               <button
                 onClick={() => removeActivity(activity.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 text-xs"
-                aria-label="Remove activity"
+                aria-label="Remove route block"
               >
                 ✕
               </button>
@@ -149,7 +250,7 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
         </div>
       )}
 
-      {day.activities.filter(a => !a.isContinuingStay).length === 0 && (
+      {plannedActivities.length === 0 && (
         <p className="text-sm text-gray-400 italic">No activities yet</p>
       )}
     </div>
