@@ -42,6 +42,23 @@ const activityEmojis: Record<ActivityType, string> = {
 // Default map center (USA center)
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 };
 
+function hasValidCoordinates(coords?: Coordinates | null): coords is Coordinates {
+  return Boolean(coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng) && (coords.lat !== 0 || coords.lng !== 0));
+}
+
+function getActivityMapPoints(activity: Activity): Coordinates[] {
+  if (activity.type === 'driving') {
+    const drive = activity as DrivingActivity;
+    return [
+      drive.startLocation?.coordinates,
+      ...(drive.waypoints ?? []).map(waypoint => waypoint.coordinates),
+      drive.endLocation?.coordinates,
+    ].filter(hasValidCoordinates);
+  }
+
+  return hasValidCoordinates(activity.coordinates) ? [activity.coordinates] : [];
+}
+
 // Singleton promise so the script loads only once across all renders/mounts
 let googleMapsPromise: Promise<typeof google.maps> | null = null;
 
@@ -302,11 +319,12 @@ export default function TripMap(props: MapProps = {}) {
       });
     });
 
-    // Fit map to show all visible markers
-    if (allActivities.length > 0) {
+    // Fit map to the real visible trip footprint, including drive starts, ends, and waypoints.
+    const visiblePoints = allActivities.flatMap(getActivityMapPoints);
+    if (visiblePoints.length > 0) {
       const bounds = new google.maps.LatLngBounds();
-      allActivities.forEach(activity => bounds.extend(activity.coordinates));
-      map.fitBounds(bounds);
+      visiblePoints.forEach(point => bounds.extend(point));
+      map.fitBounds(bounds, 90);
     }
   }, [map, trip, visibleTypes, selectedDays]);
 
@@ -732,14 +750,16 @@ export default function TripMap(props: MapProps = {}) {
     if (!day) return;
     const acts = day.activities ?? [];
     if (acts.length === 0) return;
+    const points = acts.flatMap(getActivityMapPoints);
+    if (points.length === 0) return;
 
-    if (acts.length === 1) {
-      map.panTo(acts[0].coordinates);
+    if (points.length === 1) {
+      map.panTo(points[0]);
       map.setZoom(12);
     } else {
       const bounds = new google.maps.LatLngBounds();
-      acts.forEach(a => bounds.extend(a.coordinates));
-      map.fitBounds(bounds, 80);
+      points.forEach(point => bounds.extend(point));
+      map.fitBounds(bounds, 90);
     }
   }, [selectedDay, map, trip]);
 

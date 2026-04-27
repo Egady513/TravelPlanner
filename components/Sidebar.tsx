@@ -59,7 +59,7 @@ export default function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <div
-        className={`hidden md:flex flex-col border-r border-white/70 bg-white/95 shadow-2xl shadow-stone-900/5 backdrop-blur-xl transition-all duration-300 ${
+        className={`hidden min-h-0 flex-shrink-0 md:flex flex-col border-r border-white/70 bg-white/95 shadow-2xl shadow-stone-900/5 backdrop-blur-xl transition-all duration-300 ${
           isCollapsed ? 'w-12' : 'w-96'
         }`}
       >
@@ -116,7 +116,7 @@ export default function Sidebar() {
                 ))}
               </div>
             )}
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {trip.days.map((day) => (
                 <DayCard
                   key={day.dayNumber}

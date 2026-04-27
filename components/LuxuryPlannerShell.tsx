@@ -2,20 +2,24 @@
 
 import {
   AlertTriangle,
-  CalendarDays,
   CheckCircle2,
   Compass,
+  Images,
   MapPinned,
   Mountain,
+  PanelRightOpen,
   Route,
   Sparkles,
   Ticket,
+  WalletCards,
+  X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTrip } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import TripMap from '@/components/Map';
+import InspirationBoard from '@/components/InspirationBoard';
 import type { Activity, Day, DrivingActivity } from '@/types';
 
 interface LuxuryPlannerShellProps {
@@ -74,6 +78,8 @@ export default function LuxuryPlannerShell({
   onPreferences,
 }: LuxuryPlannerShellProps) {
   const { trip, selectedDay, setSelectedDay, isSaving } = useTrip();
+  const [showInsights, setShowInsights] = useState(true);
+  const [showInspirationBoard, setShowInspirationBoard] = useState(false);
 
   if (!trip) return null;
 
@@ -87,7 +93,7 @@ export default function LuxuryPlannerShell({
           </div>
           <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400">Private itinerary studio</p>
           <h1 className="mt-2 text-3xl font-semibold">{trip.name || 'Road Trip'}</h1>
-          <p className="mt-3 text-sm text-stone-300">Add trip days to unlock the map, route atelier, and preparedness readout.</p>
+          <p className="mt-3 text-sm text-stone-300">Add trip days to unlock the map, route planner, and readiness readout.</p>
           <button onClick={onImport} className="mt-6 rounded-md bg-white px-4 py-2 text-sm font-semibold text-stone-950">
             Import plan
           </button>
@@ -110,10 +116,10 @@ export default function LuxuryPlannerShell({
   const totalDriveHours = briefs.reduce((sum, brief) => sum + brief.totalDriveHours, 0);
   const plannedDays = briefs.filter(brief => brief.day.activities.length > 0).length;
   const readinessItems = [
-    { label: 'Route shape', ready: routeHeavyDays.length > 0, detail: `${routeHeavyDays.length} route days surfaced` },
-    { label: 'Booked moments', ready: ticketItems.length === 0, detail: ticketItems.length ? `${ticketItems.length} reservations open` : 'No ticket gaps found' },
-    { label: 'Plan coverage', ready: unplannedDays.length === 0, detail: `${plannedDays}/${trip.days.length} days planned` },
-    { label: 'Trip risk', ready: issueDays.length === 0, detail: issueDays.length ? `${issueDays.length} days need review` : 'No active warnings' },
+    { label: 'Route optimization', ready: routeHeavyDays.length > 0, detail: routeHeavyDays.length ? `${routeHeavyDays.length} route days to review` : 'Add drive stops to optimize', action: () => routeHeavyDays[0] ? setSelectedDay(routeHeavyDays[0].day.dayNumber) : onScout() },
+    { label: 'Reservations', ready: ticketItems.length === 0, detail: ticketItems.length ? `${ticketItems.length} ticket or booking gaps` : 'No ticket gaps found', action: onDashboard },
+    { label: 'Idea coverage', ready: unplannedDays.length === 0, detail: `${plannedDays}/${trip.days.length} days have plans`, action: () => setShowInspirationBoard(true) },
+    { label: 'Trip risk', ready: issueDays.length === 0, detail: issueDays.length ? `${issueDays.length} days need review` : 'No active warnings', action: () => issueDays[0] ? setSelectedDay(issueDays[0].day.dayNumber) : onDashboard() },
   ];
   const tripStart = formatDate(trip.startDate);
   const tripEnd = formatDate(trip.endDate);
@@ -137,6 +143,10 @@ export default function LuxuryPlannerShell({
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
+            <button onClick={() => setShowInspirationBoard(true)} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
+              <Images className="h-4 w-4 text-rose-700" />
+              Idea board
+            </button>
             <button onClick={onScout} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
               <Sparkles className="h-4 w-4 text-amber-600" />
               Scout
@@ -146,8 +156,8 @@ export default function LuxuryPlannerShell({
               Taste profile
             </button>
             <button onClick={onDashboard} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
-              <CalendarDays className="h-4 w-4 text-sky-700" />
-              Trip health
+              <WalletCards className="h-4 w-4 text-sky-700" />
+              Costs & dashboard
             </button>
             <button onClick={onImport} className="inline-flex items-center gap-2 rounded-md bg-stone-950 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-stone-800">
               <MapPinned className="h-4 w-4" />
@@ -156,12 +166,12 @@ export default function LuxuryPlannerShell({
           </div>
         </header>
 
-        <main className="grid min-h-0 flex-1 grid-cols-1 bg-[#eee7db] md:grid-cols-[24rem_minmax(0,1fr)]">
+        <main className="flex min-h-0 flex-1 bg-[#eee7db]">
           <Sidebar />
 
-          <section className="relative min-w-0 overflow-hidden">
-            <div className="absolute inset-0">
-              <TripMap />
+          <section className="relative min-w-0 flex-1 overflow-hidden bg-stone-900">
+            <div className="absolute inset-0 contrast-[1.03] saturate-[1.08]">
+              <TripMap className="h-full w-full" />
             </div>
 
             <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-4 sm:inset-x-5 sm:top-5">
@@ -199,52 +209,73 @@ export default function LuxuryPlannerShell({
               </div>
             </div>
 
-            <aside className="absolute bottom-5 right-5 top-44 z-10 hidden w-[22rem] flex-col gap-3 xl:flex">
-              <Panel title="Route Atelier" kicker="Best next planning moves">
-                <div className="space-y-2">
-                  {routeHeavyDays.length > 0 ? routeHeavyDays.map(brief => (
-                    <button
-                      key={brief.day.dayNumber}
-                      onClick={() => setSelectedDay(brief.day.dayNumber)}
-                      className="w-full rounded-md border border-stone-200 bg-white p-3 text-left transition hover:border-amber-300 hover:bg-amber-50"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-stone-950">Day {brief.day.dayNumber}: {brief.destination}</p>
-                          <p className="mt-0.5 text-xs text-stone-500">{formatDate(brief.day.date)}</p>
+            {showInsights ? (
+              <aside className="absolute bottom-5 right-5 top-44 z-10 hidden w-[22rem] flex-col gap-3 xl:flex">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowInsights(false)}
+                    className="inline-flex items-center gap-2 rounded-md border border-white/80 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-600 shadow-lg transition hover:bg-stone-50 hover:text-stone-950"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Hide insights
+                  </button>
+                </div>
+                <Panel title="Route Planner" kicker="Driving days to optimize">
+                  <div className="space-y-2">
+                    {routeHeavyDays.length > 0 ? routeHeavyDays.map(brief => (
+                      <button
+                        key={brief.day.dayNumber}
+                        onClick={() => setSelectedDay(brief.day.dayNumber)}
+                        className="w-full rounded-md border border-stone-200 bg-white p-3 text-left transition hover:border-amber-300 hover:bg-amber-50"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-stone-950">Day {brief.day.dayNumber}: {brief.destination}</p>
+                            <p className="mt-0.5 text-xs text-stone-500">{formatDate(brief.day.date)}</p>
+                          </div>
+                          <span className="rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">
+                            {formatDriveHours(brief.totalDriveHours) ?? `${brief.routeStops} stops`}
+                          </span>
                         </div>
-                        <span className="rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">
-                          {formatDriveHours(brief.totalDriveHours) ?? `${brief.routeStops} stops`}
-                        </span>
-                      </div>
-                    </button>
-                  )) : (
-                    <p className="text-sm text-stone-500">Add a driving segment or scenic route to start shaping the route layer.</p>
-                  )}
-                </div>
-              </Panel>
+                        <p className="mt-2 text-xs text-stone-500">Click to focus the map on this day route points.</p>
+                      </button>
+                    )) : (
+                      <p className="text-sm text-stone-500">Add drive stops or scenic points, then this becomes your route optimization queue.</p>
+                    )}
+                  </div>
+                </Panel>
 
-              <Panel title="Preparedness" kicker="Leave-no-doubt checklist">
-                <div className="space-y-2">
-                  {readinessItems.map(item => (
-                    <div key={item.label} className="flex items-start gap-3 rounded-md border border-stone-200 bg-white p-3">
-                      {item.ready ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-700" />
-                      ) : (
-                        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                      )}
-                      <div>
-                        <p className="text-sm font-semibold text-stone-900">{item.label}</p>
-                        <p className="text-xs text-stone-500">{item.detail}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-            </aside>
+                <Panel title="Trip Readiness" kicker="Confidence checklist">
+                  <div className="space-y-2">
+                    {readinessItems.map(item => (
+                      <button key={item.label} onClick={item.action} className="flex w-full items-start gap-3 rounded-md border border-stone-200 bg-white p-3 text-left transition hover:border-stone-300 hover:bg-stone-50">
+                        {item.ready ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-700" />
+                        ) : (
+                          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-stone-900">{item.label}</p>
+                          <p className="text-xs text-stone-500">{item.detail}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </Panel>
+              </aside>
+            ) : (
+              <button
+                onClick={() => setShowInsights(true)}
+                className="absolute right-5 top-44 z-10 hidden items-center gap-2 rounded-md border border-white/80 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-700 shadow-lg transition hover:bg-stone-50 xl:inline-flex"
+              >
+                <PanelRightOpen className="h-4 w-4" />
+                Show insights
+              </button>
+            )}
           </section>
         </main>
       </div>
+      <InspirationBoard isOpen={showInspirationBoard} onClose={() => setShowInspirationBoard(false)} />
     </div>
   );
 }
