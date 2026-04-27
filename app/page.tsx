@@ -4,15 +4,13 @@ import { useState } from 'react';
 import { useTrip } from "@/lib/store";
 import Homepage from "@/components/Homepage";
 import TripWizard from "@/components/TripWizard";
-import TripMap from "@/components/Map";
-import Sidebar from "@/components/Sidebar";
 import { Trip } from '@/types';
 import { parseLocalDate } from '@/lib/dateUtils';
 import ImportItinerary from "@/components/ImportItinerary";
-import TopNav from "@/components/TopNav";
 import ScoutPanel from "@/components/ScoutPanel";
 import DashboardModal from "@/components/DashboardModal";
 import PreferencesModal from "@/components/PreferencesModal";
+import LuxuryPlannerShell from "@/components/LuxuryPlannerShell";
 
 export default function Home() {
   const { trip, setTrip, updateDestinationBrief } = useTrip();
@@ -87,24 +85,18 @@ export default function Home() {
   // If trip exists, show map interface
   if (trip) {
     return (
-      <div className="flex flex-col h-screen">
-        <TopNav
+      <>
+        <LuxuryPlannerShell
           onImport={() => setShowImport(true)}
           onDashboard={() => setShowDashboard(true)}
           onScout={() => setShowScout(prev => !prev)}
           onPreferences={() => setShowPreferences(true)}
         />
-        <main className="flex-1 flex overflow-hidden">
-          <Sidebar />
-          <div className="flex-1 relative">
-            <TripMap />
-          </div>
-        </main>
         <ImportItinerary isOpen={showImport} onClose={() => setShowImport(false)} />
         <ScoutPanel isOpen={showScout} onClose={() => setShowScout(false)} />
         {showDashboard && <DashboardModal onClose={() => setShowDashboard(false)} />}
         {showPreferences && <PreferencesModal onClose={() => setShowPreferences(false)} />}
-      </div>
+      </>
     );
   }
 

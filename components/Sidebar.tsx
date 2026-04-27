@@ -7,6 +7,7 @@ import DayCard from './DayCard';
 import DayDetailPanel from './DayDetailPanel';
 import AddActivityForm from './AddActivityForm';
 import ScoutTip from '@/components/ScoutTip';
+import { ChevronLeft, ChevronRight, Plus, Sparkles, X } from 'lucide-react';
 
 export default function Sidebar() {
   const { trip, clearTrip, selectedDay, addDay } = useTrip();
@@ -58,30 +59,39 @@ export default function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <div
-        className={`hidden md:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
+        className={`hidden md:flex flex-col border-r border-white/70 bg-white/95 shadow-2xl shadow-stone-900/5 backdrop-blur-xl transition-all duration-300 ${
           isCollapsed ? 'w-12' : 'w-96'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-stone-200/80 p-4">
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">Trip command center</p>
-              <h2 className="font-bold text-gray-900 truncate mt-1">{trip.name}</h2>
-              <p className="text-xs text-gray-500">{formatDateRange()}</p>
-              <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
-                <span>{trip.days.length} {trip.days.length === 1 ? 'day' : 'days'}</span>
-                <span>{plannedDays} planned</span>
-                {issueDays > 0 && <span>{issueDays} need review</span>}
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Daily journey board</p>
+              <h2 className="mt-1 truncate text-lg font-semibold text-stone-950">{trip.name}</h2>
+              <p className="text-xs text-stone-500">{formatDateRange()}</p>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <span className="rounded-md border border-stone-200 bg-stone-50 px-2 py-2 text-stone-600">
+                  <strong className="block text-sm text-stone-950">{trip.days.length}</strong>
+                  Days
+                </span>
+                <span className="rounded-md border border-emerald-100 bg-emerald-50 px-2 py-2 text-emerald-800">
+                  <strong className="block text-sm text-emerald-950">{plannedDays}</strong>
+                  Planned
+                </span>
+                <span className="rounded-md border border-amber-100 bg-amber-50 px-2 py-2 text-amber-800">
+                  <strong className="block text-sm text-amber-950">{issueDays}</strong>
+                  Review
+                </span>
               </div>
             </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-gray-500 hover:text-gray-700 p-1"
+            className="rounded-md p-1.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? '→' : '←'}
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
         </div>
 
@@ -91,8 +101,9 @@ export default function Sidebar() {
             {/* Scout Tips */}
             {visibleTips.length > 0 && (
               <div className="px-3 pt-3 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                  <span>🐕</span> Scout Tips
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-500">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                  Concierge Tips
                 </p>
                 {visibleTips.map(tip => (
                   <ScoutTip
@@ -105,7 +116,7 @@ export default function Sidebar() {
                 ))}
               </div>
             )}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {trip.days.map((day) => (
                 <DayCard
                   key={day.dayNumber}
@@ -119,21 +130,23 @@ export default function Sidebar() {
             <div className="px-4 pb-2">
               <button
                 onClick={addDay}
-                className="w-full text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-2 px-3 rounded-md transition-colors border border-blue-200 border-dashed"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
               >
-                + Add Day
+                <Plus className="h-4 w-4" />
+                Add day
               </button>
             </div>
-            <div className="p-4 border-t border-gray-200">
+            <div className="border-t border-stone-200 p-4">
               <button
                 onClick={() => {
                   if (confirm('Close this trip view and return home? Your trip stays saved in Supabase.')) {
                     clearTrip();
                   }
                 }}
-                className="w-full text-sm text-red-600 hover:text-red-700 hover:bg-red-50 py-2 px-3 rounded-md transition-colors"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
               >
-                Close Trip View
+                <X className="h-4 w-4" />
+                Close trip view
               </button>
             </div>
           </>
@@ -156,7 +169,7 @@ export default function Sidebar() {
       {/* Add Activity Modal */}
       {showAddForm && selectedDay && typeof window !== 'undefined' &&
         createPortal(
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/50">
             <AddActivityForm
               coordinates={{ lat: 39.8283, lng: -98.5795 }}
               onClose={() => setShowAddForm(false)}
@@ -167,12 +180,12 @@ export default function Sidebar() {
       }
 
       {/* Mobile Bottom Sheet */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-h-64 overflow-y-auto z-10">
+      <div className="fixed bottom-0 left-0 right-0 z-10 max-h-64 overflow-y-auto border-t border-white/70 bg-white/95 shadow-2xl shadow-stone-900/20 backdrop-blur-xl md:hidden">
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="font-bold text-gray-900">{trip.name}</h2>
-              <p className="text-xs text-gray-500">{formatDateRange()}</p>
+              <h2 className="font-semibold text-stone-950">{trip.name}</h2>
+              <p className="text-xs text-stone-500">{formatDateRange()}</p>
             </div>
             <button
               onClick={() => {
@@ -180,7 +193,7 @@ export default function Sidebar() {
                   clearTrip();
                 }
               }}
-              className="text-sm text-red-600 hover:text-red-700"
+              className="text-sm font-semibold text-stone-500 hover:text-stone-800"
             >
               Close
             </button>
@@ -200,9 +213,10 @@ export default function Sidebar() {
           <div className="mt-3">
             <button
               onClick={addDay}
-              className="w-full text-sm text-blue-600 hover:text-blue-700 py-2 px-3 rounded-md border border-blue-200 border-dashed"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-stone-300 px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50"
             >
-              + Add Day
+              <Plus className="h-4 w-4" />
+              Add day
             </button>
           </div>
         </div>
