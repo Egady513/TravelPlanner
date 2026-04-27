@@ -73,6 +73,49 @@ function getDayBrief(day: Day): DayBrief {
   };
 }
 
+function getRouteSuggestionStops(day: Day): Activity[] {
+  return day.activities
+    .filter(activity => !activity.isContinuingStay)
+    .flatMap(activity => {
+      if (activity.type !== 'driving') return [activity];
+      const drive = activity as DrivingActivity;
+      const stops: Activity[] = [];
+
+      if (drive.startLocation?.coordinates) {
+        stops.push({
+          ...activity,
+          id: `${activity.id}-start`,
+          type: 'activity',
+          name: drive.startLocation.name,
+          coordinates: drive.startLocation.coordinates,
+        });
+      }
+
+      (drive.waypoints ?? []).forEach((waypoint, index) => {
+        stops.push({
+          ...activity,
+          id: `${activity.id}-waypoint-${index}`,
+          type: 'scenic',
+          name: waypoint.name,
+          coordinates: waypoint.coordinates,
+        });
+      });
+
+      if (drive.endLocation?.coordinates) {
+        stops.push({
+          ...activity,
+          id: `${activity.id}-end`,
+          type: 'activity',
+          name: drive.endLocation.name,
+          coordinates: drive.endLocation.coordinates,
+        });
+      }
+
+      return stops;
+    })
+    .filter(activity => Number.isFinite(activity.coordinates?.lat) && Number.isFinite(activity.coordinates?.lng));
+}
+
 export default function LuxuryPlannerShell({
   onImport,
   onDashboard,
@@ -80,8 +123,8 @@ export default function LuxuryPlannerShell({
   onPreferences,
 }: LuxuryPlannerShellProps) {
   const { trip, selectedDay, setSelectedDay, isSaving } = useTrip();
-  const [showInsights, setShowInsights] = useState(true);
-  const [showReadout, setShowReadout] = useState(true);
+  const [showInsights, setShowInsights] = useState(false);
+  const [showReadout, setShowReadout] = useState(false);
   const [showInspirationBoard, setShowInspirationBoard] = useState(false);
   const [routeReviewDay, setRouteReviewDay] = useState<Day | null>(null);
 
@@ -129,9 +172,9 @@ export default function LuxuryPlannerShell({
   const tripEnd = formatDate(trip.endDate);
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f7f3ec] text-stone-950">
+    <div className="min-h-screen overflow-hidden bg-stone-100 text-stone-950">
       <div className="flex h-screen flex-col">
-        <header className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-5">
+        <header className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-5">
           <div className="flex items-center gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-stone-950 text-white shadow-sm">
               <Compass className="h-5 w-5" />
@@ -146,26 +189,26 @@ export default function LuxuryPlannerShell({
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 lg:flex">
-            <button onClick={() => setShowInspirationBoard(true)} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
+          <div className="hidden items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 p-1 lg:flex">
+            <button onClick={() => setShowInspirationBoard(true)} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:text-stone-950">
               <Images className="h-4 w-4 text-rose-700" />
-              Idea board
+              Ideas
             </button>
-            <button onClick={onScout} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
+            <button onClick={onScout} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-stone-950 hover:shadow-sm">
               <Sparkles className="h-4 w-4 text-amber-600" />
               Scout
             </button>
-            <button onClick={onPreferences} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
+            <button onClick={onPreferences} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-stone-950 hover:shadow-sm">
               <Mountain className="h-4 w-4 text-emerald-700" />
-              Taste profile
+              Taste
             </button>
-            <button onClick={onDashboard} className="inline-flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50">
+            <button onClick={onDashboard} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-white hover:text-stone-950 hover:shadow-sm">
               <WalletCards className="h-4 w-4 text-sky-700" />
-              Costs & dashboard
+              Costs
             </button>
             <button onClick={onImport} className="inline-flex items-center gap-2 rounded-md bg-stone-950 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-stone-800">
               <MapPinned className="h-4 w-4" />
-              Import plan
+              Import
             </button>
           </div>
         </header>
@@ -179,11 +222,11 @@ export default function LuxuryPlannerShell({
             </div>
 
             <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-4 sm:inset-x-5 sm:top-5">
-              <div className="pointer-events-auto w-full max-w-xl rounded-lg border border-white/70 bg-white/95 p-4 shadow-2xl shadow-stone-900/10 backdrop-blur-xl">
+              <div className="pointer-events-auto w-full max-w-md rounded-lg border border-white/80 bg-white/95 p-3 shadow-xl shadow-stone-900/10 backdrop-blur-xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Today in focus</p>
-                    <h2 className="mt-1 text-xl font-semibold text-stone-950">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Selected day</p>
+                    <h2 className="mt-1 text-lg font-semibold text-stone-950">
                       Day {selectedBrief.day.dayNumber}: {selectedBrief.destination}
                     </h2>
                     <p className="mt-1 text-sm text-stone-500">{formatDate(selectedBrief.day.date)}</p>
@@ -195,19 +238,26 @@ export default function LuxuryPlannerShell({
                     Focus map
                   </button>
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                   <Metric label="Drive" value={formatDriveHours(selectedBrief.totalDriveHours) ?? 'None'} />
-                  <Metric label="Route stops" value={String(selectedBrief.routeStops)} />
-                  <Metric label="Ideas saved" value={String(selectedBrief.activities.length)} />
+                  <Metric label="Stops" value={String(selectedBrief.routeStops)} />
+                  <Metric label="Plans" value={String(selectedBrief.activities.length)} />
                 </div>
+                <button
+                  onClick={() => setRouteReviewDay(selectedBrief.day)}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-stone-950 px-3 py-2 text-xs font-semibold text-white transition hover:bg-stone-800"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Review stop order
+                </button>
               </div>
 
-              <div className="pointer-events-auto hidden w-80 rounded-lg border border-stone-200 bg-stone-950/95 text-white shadow-2xl shadow-stone-900/20 backdrop-blur-xl xl:block">
+              <div className="pointer-events-auto hidden w-72 rounded-lg border border-stone-800 bg-stone-950/95 text-white shadow-xl shadow-stone-900/20 backdrop-blur-xl xl:block">
                 <button
                   onClick={() => setShowReadout(prev => !prev)}
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Concierge readout</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Trip snapshot</span>
                   {showReadout ? <ChevronUp className="h-4 w-4 text-stone-400" /> : <ChevronDown className="h-4 w-4 text-stone-400" />}
                 </button>
                 <div className={`${showReadout ? 'grid' : 'hidden'} grid-cols-2 gap-3 px-4 pb-4`}>
@@ -279,10 +329,10 @@ export default function LuxuryPlannerShell({
             ) : (
               <button
                 onClick={() => setShowInsights(true)}
-                className="absolute right-5 top-44 z-10 hidden items-center gap-2 rounded-md border border-white/80 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-700 shadow-lg transition hover:bg-stone-50 xl:inline-flex"
+                className="absolute right-5 top-24 z-10 hidden items-center gap-2 rounded-md border border-white/80 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-700 shadow-lg transition hover:bg-stone-50 xl:inline-flex"
               >
                 <PanelRightOpen className="h-4 w-4" />
-                Show insights
+                Route insights
               </button>
             )}
           </section>
@@ -355,7 +405,7 @@ function RouteReviewModal({
 
   if (!day) return null;
 
-  const plannedActivities = day.activities.filter(activity => !activity.isContinuingStay);
+  const plannedActivities = getRouteSuggestionStops(day);
   const canOptimize = plannedActivities.length >= 2;
 
   const requestSuggestions = async () => {
@@ -369,7 +419,7 @@ function RouteReviewModal({
       const response = await fetch('/api/scout/optimize-day', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day, trip }),
+        body: JSON.stringify({ day: { ...day, activities: plannedActivities }, trip }),
       });
       if (!response.ok) throw new Error('Could not create route suggestions');
       const data = await response.json() as { order: string[]; reasoning: string };
@@ -390,7 +440,7 @@ function RouteReviewModal({
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Scout route suggestions</p>
             <h2 className="mt-1 text-xl font-semibold text-stone-950">Day {day.dayNumber} stop order</h2>
-            <p className="mt-1 text-sm text-stone-500">This reviews the best order for the day. Applying the order still happens from the day detail panel.</p>
+            <p className="mt-1 text-sm text-stone-500">This reviews drive points, waypoints, meals, lodging, and activities so the route advice matches the map.</p>
           </div>
           <button onClick={onClose} className="rounded-md p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-950" aria-label="Close route suggestions">
             <X className="h-5 w-5" />
@@ -399,7 +449,7 @@ function RouteReviewModal({
 
         <div className="space-y-4 p-5">
           {!canOptimize && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Add at least two planned stops to get route-order suggestions.</p>
+            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Add at least two mapped stops, waypoints, or activities to get route-order suggestions.</p>
           )}
 
           <button
