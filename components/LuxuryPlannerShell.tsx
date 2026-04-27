@@ -2,6 +2,8 @@
 
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   Compass,
   Images,
@@ -79,7 +81,9 @@ export default function LuxuryPlannerShell({
 }: LuxuryPlannerShellProps) {
   const { trip, selectedDay, setSelectedDay, isSaving } = useTrip();
   const [showInsights, setShowInsights] = useState(true);
+  const [showReadout, setShowReadout] = useState(true);
   const [showInspirationBoard, setShowInspirationBoard] = useState(false);
+  const [routeReviewDay, setRouteReviewDay] = useState<Day | null>(null);
 
   if (!trip) return null;
 
@@ -116,7 +120,7 @@ export default function LuxuryPlannerShell({
   const totalDriveHours = briefs.reduce((sum, brief) => sum + brief.totalDriveHours, 0);
   const plannedDays = briefs.filter(brief => brief.day.activities.length > 0).length;
   const readinessItems = [
-    { label: 'Route optimization', ready: routeHeavyDays.length > 0, detail: routeHeavyDays.length ? `${routeHeavyDays.length} route days to review` : 'Add drive stops to optimize', action: () => routeHeavyDays[0] ? setSelectedDay(routeHeavyDays[0].day.dayNumber) : onScout() },
+    { label: 'Route suggestions', ready: routeHeavyDays.length > 0, detail: routeHeavyDays.length ? `${routeHeavyDays.length} route days to review` : 'Add drive stops to optimize', action: () => routeHeavyDays[0] ? setRouteReviewDay(routeHeavyDays[0].day) : onScout() },
     { label: 'Reservations', ready: ticketItems.length === 0, detail: ticketItems.length ? `${ticketItems.length} ticket or booking gaps` : 'No ticket gaps found', action: onDashboard },
     { label: 'Idea coverage', ready: unplannedDays.length === 0, detail: `${plannedDays}/${trip.days.length} days have plans`, action: () => setShowInspirationBoard(true) },
     { label: 'Trip risk', ready: issueDays.length === 0, detail: issueDays.length ? `${issueDays.length} days need review` : 'No active warnings', action: () => issueDays[0] ? setSelectedDay(issueDays[0].day.dayNumber) : onDashboard() },
@@ -198,9 +202,15 @@ export default function LuxuryPlannerShell({
                 </div>
               </div>
 
-              <div className="pointer-events-auto hidden w-80 rounded-lg border border-stone-200 bg-stone-950/95 p-4 text-white shadow-2xl shadow-stone-900/20 backdrop-blur-xl xl:block">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Concierge readout</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="pointer-events-auto hidden w-80 rounded-lg border border-stone-200 bg-stone-950/95 text-white shadow-2xl shadow-stone-900/20 backdrop-blur-xl xl:block">
+                <button
+                  onClick={() => setShowReadout(prev => !prev)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
+                >
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Concierge readout</span>
+                  {showReadout ? <ChevronUp className="h-4 w-4 text-stone-400" /> : <ChevronDown className="h-4 w-4 text-stone-400" />}
+                </button>
+                <div className={`${showReadout ? 'grid' : 'hidden'} grid-cols-2 gap-3 px-4 pb-4`}>
                   <DarkMetric icon={Route} label="Drive time" value={formatDriveHours(totalDriveHours) ?? '0h'} />
                   <DarkMetric icon={AlertTriangle} label="Review days" value={String(issueDays.length)} />
                   <DarkMetric icon={Ticket} label="Ticket gaps" value={String(ticketItems.length)} />
@@ -220,12 +230,15 @@ export default function LuxuryPlannerShell({
                     Hide insights
                   </button>
                 </div>
-                <Panel title="Route Planner" kicker="Driving days to optimize">
+                <Panel title="Route Planner" kicker="Driving days to review">
                   <div className="space-y-2">
                     {routeHeavyDays.length > 0 ? routeHeavyDays.map(brief => (
                       <button
                         key={brief.day.dayNumber}
-                        onClick={() => setSelectedDay(brief.day.dayNumber)}
+                        onClick={() => {
+                          setSelectedDay(brief.day.dayNumber);
+                          setRouteReviewDay(brief.day);
+                        }}
                         className="w-full rounded-md border border-stone-200 bg-white p-3 text-left transition hover:border-amber-300 hover:bg-amber-50"
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -237,7 +250,7 @@ export default function LuxuryPlannerShell({
                             {formatDriveHours(brief.totalDriveHours) ?? `${brief.routeStops} stops`}
                           </span>
                         </div>
-                        <p className="mt-2 text-xs text-stone-500">Click to focus the map on this day route points.</p>
+                        <p className="mt-2 text-xs text-stone-500">Click for Scout stop-order suggestions and map focus.</p>
                       </button>
                     )) : (
                       <p className="text-sm text-stone-500">Add drive stops or scenic points, then this becomes your route optimization queue.</p>
@@ -276,6 +289,7 @@ export default function LuxuryPlannerShell({
         </main>
       </div>
       <InspirationBoard isOpen={showInspirationBoard} onClose={() => setShowInspirationBoard(false)} />
+      <RouteReviewModal day={routeReviewDay} trip={trip} onClose={() => setRouteReviewDay(null)} />
     </div>
   );
 }
@@ -321,6 +335,100 @@ function Panel({
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">{kicker}</p>
       <h3 className="mt-1 text-base font-semibold text-stone-950">{title}</h3>
       <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+function RouteReviewModal({
+  day,
+  trip,
+  onClose,
+}: {
+  day: Day | null;
+  trip: NonNullable<ReturnType<typeof useTrip>['trip']>;
+  onClose: () => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [reasoning, setReasoning] = useState<string | null>(null);
+  const [order, setOrder] = useState<Activity[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!day) return null;
+
+  const plannedActivities = day.activities.filter(activity => !activity.isContinuingStay);
+  const canOptimize = plannedActivities.length >= 2;
+
+  const requestSuggestions = async () => {
+    if (!canOptimize || isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    setReasoning(null);
+    setOrder([]);
+
+    try {
+      const response = await fetch('/api/scout/optimize-day', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day, trip }),
+      });
+      if (!response.ok) throw new Error('Could not create route suggestions');
+      const data = await response.json() as { order: string[]; reasoning: string };
+      const byId = new Map(plannedActivities.map(activity => [activity.id, activity]));
+      setOrder(data.order.map(id => byId.get(id)).filter(Boolean) as Activity[]);
+      setReasoning(data.reasoning);
+    } catch {
+      setError('Scout could not create suggestions for this day yet. The day may need more mapped stops or cleaner coordinates.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-xl border border-white/70 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-5">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Scout route suggestions</p>
+            <h2 className="mt-1 text-xl font-semibold text-stone-950">Day {day.dayNumber} stop order</h2>
+            <p className="mt-1 text-sm text-stone-500">This reviews the best order for the day. Applying the order still happens from the day detail panel.</p>
+          </div>
+          <button onClick={onClose} className="rounded-md p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-950" aria-label="Close route suggestions">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          {!canOptimize && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Add at least two planned stops to get route-order suggestions.</p>
+          )}
+
+          <button
+            onClick={requestSuggestions}
+            disabled={!canOptimize || isLoading}
+            className="inline-flex items-center gap-2 rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" />
+            {isLoading ? 'Reviewing route...' : 'Generate suggestions'}
+          </button>
+
+          {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {reasoning && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{reasoning}</p>}
+
+          {order.length > 0 && (
+            <div className="space-y-2">
+              {order.map((activity, index) => (
+                <div key={activity.id} className="flex items-start gap-3 rounded-md border border-stone-200 bg-stone-50 p-3">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-stone-950 text-xs font-semibold text-white">{index + 1}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-950">{activity.name}</p>
+                    <p className="text-xs capitalize text-stone-500">{activity.type}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
