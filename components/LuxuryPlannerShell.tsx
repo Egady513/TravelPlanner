@@ -252,25 +252,26 @@ export default function LuxuryPlannerShell({
                 </button>
               </div>
 
-              <div className="pointer-events-auto hidden w-72 rounded-lg border border-stone-800 bg-stone-950/95 text-white shadow-xl shadow-stone-900/20 backdrop-blur-xl xl:block">
-                <button
-                  onClick={() => setShowReadout(prev => !prev)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Trip snapshot</span>
-                  {showReadout ? <ChevronUp className="h-4 w-4 text-stone-400" /> : <ChevronDown className="h-4 w-4 text-stone-400" />}
-                </button>
-                <div className={`${showReadout ? 'grid' : 'hidden'} grid-cols-2 gap-3 px-4 pb-4`}>
-                  <DarkMetric icon={Route} label="Drive time" value={formatDriveHours(totalDriveHours) ?? '0h'} />
-                  <DarkMetric icon={AlertTriangle} label="Review days" value={String(issueDays.length)} />
-                  <DarkMetric icon={Ticket} label="Ticket gaps" value={String(ticketItems.length)} />
-                  <DarkMetric icon={CheckCircle2} label="Planned" value={`${plannedDays}/${trip.days.length}`} />
-                </div>
+            </div>
+
+            <div className="pointer-events-auto absolute bottom-5 right-24 z-10 hidden w-72 rounded-lg border border-stone-800 bg-stone-950/95 text-white shadow-xl shadow-stone-900/20 backdrop-blur-xl xl:block">
+              <button
+                onClick={() => setShowReadout(prev => !prev)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Trip snapshot</span>
+                {showReadout ? <ChevronUp className="h-4 w-4 text-stone-400" /> : <ChevronDown className="h-4 w-4 text-stone-400" />}
+              </button>
+              <div className={`${showReadout ? 'grid' : 'hidden'} grid-cols-2 gap-3 px-4 pb-4`}>
+                <DarkMetric icon={Route} label="Drive time" value={formatDriveHours(totalDriveHours) ?? '0h'} />
+                <DarkMetric icon={AlertTriangle} label="Review days" value={String(issueDays.length)} />
+                <DarkMetric icon={Ticket} label="Ticket gaps" value={String(ticketItems.length)} />
+                <DarkMetric icon={CheckCircle2} label="Planned" value={`${plannedDays}/${trip.days.length}`} />
               </div>
             </div>
 
             {showInsights ? (
-              <aside className="absolute bottom-5 right-5 top-44 z-10 hidden w-[22rem] flex-col gap-3 xl:flex">
+              <aside className="absolute bottom-5 left-5 z-10 hidden max-h-[55vh] w-[22rem] flex-col gap-3 overflow-y-auto xl:flex">
                 <div className="flex justify-end">
                   <button
                     onClick={() => setShowInsights(false)}
@@ -329,7 +330,7 @@ export default function LuxuryPlannerShell({
             ) : (
               <button
                 onClick={() => setShowInsights(true)}
-                className="absolute right-5 top-24 z-10 hidden items-center gap-2 rounded-md border border-white/80 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-700 shadow-lg transition hover:bg-stone-50 xl:inline-flex"
+                className="absolute bottom-24 left-5 z-10 hidden items-center gap-2 rounded-md border border-white/80 bg-white/95 px-3 py-2 text-xs font-semibold text-stone-700 shadow-lg transition hover:bg-stone-50 xl:inline-flex"
               >
                 <PanelRightOpen className="h-4 w-4" />
                 Route insights
@@ -434,12 +435,12 @@ function RouteReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-xl border border-white/70 bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-5">
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 pointer-events-none">
+      <div className="pointer-events-auto max-h-[48vh] w-full max-w-4xl overflow-hidden rounded-xl border border-white/70 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">Scout route suggestions</p>
-            <h2 className="mt-1 text-xl font-semibold text-stone-950">Day {day.dayNumber} stop order</h2>
+            <h2 className="mt-1 text-lg font-semibold text-stone-950">Day {day.dayNumber} stop order</h2>
             <p className="mt-1 text-sm text-stone-500">This reviews drive points, waypoints, meals, lodging, and activities so the route advice matches the map.</p>
           </div>
           <button onClick={onClose} className="rounded-md p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-950" aria-label="Close route suggestions">
@@ -447,7 +448,7 @@ function RouteReviewModal({
           </button>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="max-h-[calc(48vh-6.5rem)] space-y-4 overflow-y-auto p-4">
           {!canOptimize && (
             <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Add at least two mapped stops, waypoints, or activities to get route-order suggestions.</p>
           )}

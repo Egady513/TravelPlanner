@@ -10,6 +10,7 @@ interface DayCardProps {
   day: Day;
   isSelected: boolean;
   onSelect?: () => void;
+  onOpenDetails?: () => void;
 }
 
 const activityIcons: Record<string, string> = {
@@ -45,7 +46,7 @@ function formatDriveHours(hours: number) {
   return hours % 1 === 0 ? `${hours.toFixed(0)}h` : `${hours.toFixed(1)}h`;
 }
 
-export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
+export default function DayCard({ day, isSelected, onSelect, onOpenDetails }: DayCardProps) {
   const { setSelectedDay, removeActivity, setDayWeather } = useTrip();
   const dogStatus = getDogStatus(day.activities);
   const plannedActivities = day.activities.filter(a => !a.isContinuingStay);
@@ -252,6 +253,19 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
 
       {plannedActivities.length === 0 && (
         <p className="text-sm text-gray-400 italic">No activities yet</p>
+      )}
+
+      {onOpenDetails && (
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            setSelectedDay(day.dayNumber);
+            onOpenDetails();
+          }}
+          className="mt-4 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-900"
+        >
+          Open day planner
+        </button>
       )}
     </div>
   );

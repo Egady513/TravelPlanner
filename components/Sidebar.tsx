@@ -122,7 +122,7 @@ export default function Sidebar() {
                   key={day.dayNumber}
                   day={day}
                   isSelected={selectedDay === day.dayNumber}
-                  onSelect={() => setShowDetailPanel(true)}
+                  onOpenDetails={() => setShowDetailPanel(true)}
                 />
               ))}
             </div>
@@ -205,6 +205,7 @@ export default function Sidebar() {
                 key={day.dayNumber}
                 day={day}
                 isSelected={selectedDay === day.dayNumber}
+                onOpenDetails={() => setShowDetailPanel(true)}
               />
             ))}
           </div>
