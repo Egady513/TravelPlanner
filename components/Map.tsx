@@ -929,7 +929,7 @@ export default function TripMap(props: MapProps = {}) {
                       { type: 'park' as ActivityType, label: 'Park', emoji: '🏞️' },
                       { type: 'driving' as ActivityType, label: 'Driving', emoji: '🚗' },
                       { type: 'activity' as ActivityType, label: 'Activity', emoji: '🎡' },
-                      { type: 'scenic' as ActivityType, label: 'Scenic Drive', emoji: '🌄' },
+                      { type: 'scenic' as ActivityType, label: 'Scenic / Attraction', emoji: '🌄' },
                     ]
                   ).map(({ type, label, emoji }) => (
                     <label key={type} className="flex items-center gap-2 cursor-pointer mb-1">
