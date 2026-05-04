@@ -106,7 +106,7 @@ export default function Sidebar() {
                   key={day.dayNumber}
                   day={day}
                   isSelected={selectedDay === day.dayNumber}
-                  onAddActivity={() => setShowAddForm(true)}
+                  onAddActivity={() => setShowDetailPanel(true)}
                 />
               ))}
             </div>
