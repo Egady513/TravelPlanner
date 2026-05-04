@@ -8,11 +8,13 @@ interface DashboardModalProps {
 }
 
 export default function DashboardModal({ onClose }: DashboardModalProps) {
-  const { trip } = useTrip();
-  const [mpg, setMpg] = useState(25);
-  const [gasPrice, setGasPrice] = useState(3.50);
+  const { trip, updateVehicleSettings } = useTrip();
 
   if (!trip) return null;
+
+  const mpg = trip.vehicleMpg ?? 25;
+  const gasPrice = trip.gasPricePerGallon ?? 3.50;
+  const tankRange = trip.vehicleRangeMiles ?? 300;
 
   const totalMiles = trip.totalDistance ?? 0;
   const estimatedGallons = totalMiles > 0 ? totalMiles / mpg : 0;
@@ -73,7 +75,7 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
           {/* Gas cost estimator */}
           <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
             <p className="font-semibold text-orange-900 mb-3">⛽ Gas Cost Estimator</p>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
                 <label className="text-xs text-gray-600 block mb-1">Vehicle MPG</label>
                 <input
@@ -81,7 +83,7 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
                   min={1}
                   max={150}
                   value={mpg}
-                  onChange={e => setMpg(Number(e.target.value))}
+                  onChange={e => updateVehicleSettings({ vehicleMpg: Number(e.target.value) })}
                   className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
                 />
               </div>
@@ -92,7 +94,19 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
                   min={0.01}
                   step={0.01}
                   value={gasPrice}
-                  onChange={e => setGasPrice(Number(e.target.value))}
+                  onChange={e => updateVehicleSettings({ gasPricePerGallon: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 block mb-1">Tank Range (miles)</label>
+                <input
+                  type="number"
+                  min={50}
+                  max={1000}
+                  step={10}
+                  value={tankRange}
+                  onChange={e => updateVehicleSettings({ vehicleRangeMiles: Number(e.target.value) })}
                   className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
                 />
               </div>
