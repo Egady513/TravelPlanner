@@ -65,6 +65,10 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
   const [amenities, setAmenities] = useState(
     existingCamping?.amenities ?? { free: false, fireRing: false, cellCoverage: false, water: false }
   );
+  const [isPrimary, setIsPrimary] = useState<boolean>(existingCamping?.isPrimary !== false);
+  const [manualCoordsMode, setManualCoordsMode] = useState(false);
+  const [campingLat, setCampingLat] = useState<string>('');
+  const [campingLng, setCampingLng] = useState<string>('');
 
   // Hotel/camping pricing
   const [pricePerNight, setPricePerNight] = useState<number | undefined>(existingLodging?.pricePerNight);
@@ -159,6 +163,16 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
       setParsedCoords(existingActivity?.coordinates ?? coordinates ?? null);
     }
   }, [coordinateInput, coordinates]);
+
+  // Sync manual camping lat/lng into parsedCoords
+  useEffect(() => {
+    if (!manualCoordsMode || type !== 'camping') return;
+    const lat = parseFloat(campingLat);
+    const lng = parseFloat(campingLng);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      setParsedCoords({ lat, lng });
+    }
+  }, [campingLat, campingLng, manualCoordsMode, type]);
 
   // Auto-fill driving start from previous day's endpoint
   useEffect(() => {
@@ -300,6 +314,7 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         amenities,
         pricePerNight,
         nights: nights > 1 ? nights : undefined,
+        isPrimary,
       } as CampingSpot;
     } else if (type === 'hotel') {
       activity = {
@@ -579,6 +594,68 @@ export default function AddActivityForm({ coordinates, onClose, existingActivity
         {/* Camping-Specific Fields */}
         {type === 'camping' && (
           <>
+            {/* Primary vs Backup */}
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPrimary}
+                  onChange={e => setIsPrimary(e.target.checked)}
+                  className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span className="text-sm font-medium text-amber-800">
+                  ★ Primary campsite
+                </span>
+              </label>
+              <span className="text-xs text-amber-600">
+                {isPrimary ? 'Marked as your primary site' : 'Marked as backup option'}
+              </span>
+            </div>
+
+            {/* Manual lat/lng coordinate entry */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setManualCoordsMode(prev => !prev)}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                {manualCoordsMode ? '↑ Use place name instead' : '📍 Enter GPS coordinates manually (OnX / Gaia)'}
+              </button>
+              {manualCoordsMode && (
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min={-90}
+                      max={90}
+                      value={campingLat}
+                      onChange={e => setCampingLat(e.target.value)}
+                      placeholder="e.g. 44.4280"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min={-180}
+                      max={180}
+                      value={campingLng}
+                      onChange={e => setCampingLng(e.target.value)}
+                      placeholder="e.g. -110.5885"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    />
+                  </div>
+                  {parsedCoords && campingLat && campingLng && (
+                    <p className="col-span-2 text-xs text-green-600">✓ Coordinates set: {parsedCoords.lat.toFixed(5)}, {parsedCoords.lng.toFixed(5)}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
