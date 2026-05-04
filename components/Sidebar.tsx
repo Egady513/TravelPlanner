@@ -55,9 +55,10 @@ export default function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <div
-        className={`hidden md:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
+        className={`hidden md:flex flex-col border-r border-gray-200 transition-all duration-300 ${
           isCollapsed ? 'w-12' : 'w-80'
         }`}
+        style={{ background: 'linear-gradient(180deg, #f1f5f9 0%, #e8edf5 100%)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
