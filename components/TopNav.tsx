@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronLeft, Upload, BarChart2, Heart } from 'lucide-react';
 import { useTrip } from '@/lib/store';
 
 interface TopNavProps {
@@ -25,7 +26,8 @@ export default function TopNav({ onImport, onDashboard, onScout, onPreferences }
           onClick={handleHome}
           className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
         >
-          ← Home
+          <ChevronLeft size={16} />
+          <span>Home</span>
         </button>
         <div>
           <h1 className="font-bold text-gray-900 text-base leading-tight">{trip?.name ?? 'Road Trip'}</h1>
@@ -35,7 +37,7 @@ export default function TopNav({ onImport, onDashboard, onScout, onPreferences }
       <div className="flex items-center gap-2">
         <button
           onClick={onScout}
-          className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-orange-50 hover:text-orange-700 transition-colors"
+          className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-orange-50 hover:text-orange-700 transition-colors flex items-center gap-1.5"
           title="Ask Scout"
         >
           🐕 Scout
@@ -45,20 +47,23 @@ export default function TopNav({ onImport, onDashboard, onScout, onPreferences }
             onClick={onPreferences}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            ⭐ Interests
+            <Heart size={15} />
+            <span>Interests</span>
           </button>
         )}
         <button
           onClick={onImport}
-          className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
         >
-          📋 Import
+          <Upload size={15} />
+          <span>Import</span>
         </button>
         <button
           onClick={onDashboard}
-          className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
         >
-          📊 Dashboard
+          <BarChart2 size={15} />
+          <span>Dashboard</span>
         </button>
       </div>
     </header>
