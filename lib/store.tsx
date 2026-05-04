@@ -31,6 +31,8 @@ interface TripContextType {
   addDay: () => void;
   updatePreferences: (prefs: Partial<TripPreferences>) => void;
   updateDestinationBrief: (brief: string) => void;
+  setDayLocationLabel: (dayNumber: number, label: string) => void;
+  updateVehicleSettings: (settings: { vehicleRangeMiles?: number; vehicleMpg?: number; gasPricePerGallon?: number }) => void;
 }
 
 const TripContext = createContext<TripContextType | undefined>(undefined);
@@ -264,6 +266,25 @@ export function TripProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setDayLocationLabel = useCallback((dayNumber: number, label: string) => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      const updatedDays = prev.days.map(d =>
+        d.dayNumber === dayNumber ? { ...d, locationLabel: label || undefined } : d
+      );
+      const tripWithUpdates = { ...prev, days: updatedDays };
+      const validatedDays = validateTrip(tripWithUpdates);
+      return { ...tripWithUpdates, days: validatedDays };
+    });
+  }, []);
+
+  const updateVehicleSettings = useCallback((settings: { vehicleRangeMiles?: number; vehicleMpg?: number; gasPricePerGallon?: number }) => {
+    setTripState(prev => {
+      if (!prev) return prev;
+      return { ...prev, ...settings };
+    });
+  }, []);
+
   return (
     <TripContext.Provider
       value={{
@@ -271,6 +292,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         reorderActivities, setDayWeather, clearTrip,
         selectedDay, setSelectedDay, isSaving,
         logRemovedItem, applyRouteChange, addDay, updatePreferences, updateDestinationBrief,
+        setDayLocationLabel, updateVehicleSettings,
       }}
     >
       {children}
