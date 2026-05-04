@@ -10,7 +10,6 @@ import ActivityIcon, { getActivityColor } from './ActivityIcon';
 interface DayCardProps {
   day: Day;
   isSelected: boolean;
-  onSelect?: () => void;
   onAddActivity?: () => void;
 }
 
@@ -39,7 +38,7 @@ function getContinuingStayName(day: Day): string | null {
   return continuingLodging?.name ?? null;
 }
 
-export default function DayCard({ day, isSelected, onSelect, onAddActivity }: DayCardProps) {
+export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps) {
   const { setSelectedDay, removeActivity, setDayWeather, setDayLocationLabel } = useTrip();
   const dogStatus = getDogStatus(day.activities);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
