@@ -211,8 +211,7 @@ export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps
                 {lodging.name.toLowerCase().includes('camp') ? '⛺' : '🏨'}
               </span>
               <span className="truncate font-medium">
-                {lodging.isContinuing ? 'Staying at ' : 'Tonight: '}
-                {lodging.name}
+                Staying At: {lodging.name}
               </span>
             </div>
             {lodging.missingCoords && (
