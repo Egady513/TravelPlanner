@@ -7,6 +7,8 @@ import { Activity, Coordinates, ActivityType, DrivingActivity } from '@/types';
 import { DirectionsQueue } from '@/lib/directionsQueue';
 import AddActivityForm from './AddActivityForm';
 import MarkerInfoWindow from './MarkerInfoWindow';
+import { calculateGasStops } from '@/lib/gasStops';
+import { useGasStations } from '@/lib/useGasStations';
 
 interface MapProps {
   center?: { lat: number; lng: number };
@@ -27,6 +29,24 @@ const markerColors: Record<ActivityType, string> = {
 };
 
 const ALL_TYPES = Object.keys(markerColors) as ActivityType[];
+
+// 10-color palette for day routes — visually distinct, travel-appropriate, avoids red/green confusion
+const DAY_COLORS = [
+  '#2563eb', // cobalt blue
+  '#7c3aed', // violet
+  '#0891b2', // sky blue
+  '#d97706', // amber
+  '#db2777', // pink
+  '#0f766e', // dark teal
+  '#4f46e5', // indigo
+  '#b45309', // warm brown
+  '#be185d', // deep rose
+  '#0e7490', // cyan-blue
+];
+
+function getDayColor(dayIndex: number): string {
+  return DAY_COLORS[((dayIndex % DAY_COLORS.length) + DAY_COLORS.length) % DAY_COLORS.length];
+}
 
 const activityEmojis: Record<ActivityType, string> = {
   trail: '🥾',
@@ -105,6 +125,11 @@ export default function TripMap(props: MapProps = {}) {
 
   // Legend/filter panel collapsed state
   const [legendOpen, setLegendOpen] = useState(true);
+
+  // Gas station layer state (off by default)
+  const [showGasLayer, setShowGasLayer] = useState(false);
+  const { resolvedStops: gasStops, resolveGasStops, clearStops: clearGasStops } = useGasStations();
+  const gasMarkersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
   // Lodging group checkbox ref (for indeterminate state)
   const lodgingCheckboxRef = useRef<HTMLInputElement>(null);
@@ -274,8 +299,9 @@ export default function TripMap(props: MapProps = {}) {
     });
 
     // Add waypoint pins for driving activities (always visible, regardless of layer toggle)
-    trip.days.forEach(day => {
+    trip.days.forEach((day, dayIdx) => {
       if (!isDaySelected(day.dayNumber)) return;
+      const wpDayColor = getDayColor(dayIdx);
       (day.activities ?? []).forEach(activity => {
         if (activity.type !== 'driving') return;
         const drive = activity as DrivingActivity;
@@ -283,11 +309,12 @@ export default function TripMap(props: MapProps = {}) {
         drive.waypoints.forEach((wp, i) => {
           const wpEl = document.createElement('div');
           wpEl.style.cssText = [
-            'width:10px',
-            'height:10px',
+            'width:12px',
+            'height:12px',
             'border-radius:50%',
-            'background:#6b7280',
-            'border:2px solid white',
+            'background:white',
+            `border:2.5px solid ${wpDayColor}`,
+            'box-shadow:0 1px 4px rgba(0,0,0,0.25)',
           ].join(';');
 
           const wpMarker = new google.maps.marker.AdvancedMarkerElement({
@@ -329,8 +356,6 @@ export default function TripMap(props: MapProps = {}) {
     const shouldDrawDayRoutes = selectedDays.length === 0 || selectedDays.length > 1;
     if (!shouldDrawDayRoutes) return;
 
-    const dayColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
-
     trip.days.forEach((day, index) => {
       if (!isDaySelected(day.dayNumber)) return;
 
@@ -356,7 +381,7 @@ export default function TripMap(props: MapProps = {}) {
       );
 
       const cacheKey = visibleActivities.map(a => `${a.coordinates.lat},${a.coordinates.lng}`).join('|');
-      const color = dayColors[index % dayColors.length];
+      const color = getDayColor(index);
       const startName = visibleActivities[0].name;
       const endName = visibleActivities[visibleActivities.length - 1].name;
 
@@ -461,6 +486,9 @@ export default function TripMap(props: MapProps = {}) {
     const drivingActivities = allActivities as DrivingActivity[];
 
     drivingActivities.forEach((drive) => {
+      const driveDayIndex = trip.days.findIndex(d => d.dayNumber === drive.dayNumber);
+      const driveColor = getDayColor(driveDayIndex >= 0 ? driveDayIndex : 0);
+
       // Skip routes with invalid coordinates (geocoding failed)
       const startCoords = drive.startLocation.coordinates;
       const endCoords = drive.endLocation.coordinates;
@@ -506,11 +534,11 @@ export default function TripMap(props: MapProps = {}) {
         });
         drivingPolylinesRef.current.push(halo);
 
-        // Solid orange driving route on top — the spine of the trip
+        // Solid driving route in the day's color — the spine of the trip
         const polyline = new google.maps.Polyline({
           path,
           geodesic: false,
-          strokeColor: '#ea580c',
+          strokeColor: driveColor,
           strokeOpacity: 1,
           strokeWeight: 5,
           map,
@@ -604,8 +632,9 @@ export default function TripMap(props: MapProps = {}) {
 
     if (!trip) return;
 
-    trip.days.forEach(day => {
+    trip.days.forEach((day, dayIdx) => {
       if (!isDaySelected(day.dayNumber)) return;
+      const connectorColor = getDayColor(dayIdx);
 
       const dayActivities = (day.activities ?? []).filter(a =>
         a.showOnMap !== false &&
@@ -649,18 +678,18 @@ export default function TripMap(props: MapProps = {}) {
         const to = points[i + 1];
         const connectorKey = `connector-${day.dayNumber}-${from.id}-${to.id}`;
 
-        // Dotted gray connector line
+        // Dotted connector line in the day's color (subtle)
         const connector = new google.maps.Polyline({
           path: [
             { lat: from.coords.lat, lng: from.coords.lng },
             { lat: to.coords.lat, lng: to.coords.lng },
           ],
           geodesic: true,
-          strokeColor: '#9ca3af',
+          strokeColor: connectorColor,
           strokeOpacity: 0,
           strokeWeight: 2,
           icons: [{
-            icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, scale: 3 },
+            icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.55, scale: 3, strokeColor: connectorColor },
             offset: '0',
             repeat: '12px',
           }],
@@ -716,6 +745,105 @@ export default function TripMap(props: MapProps = {}) {
       }
     });
   }, [map, trip, selectedDays, showDriveTimeTooltip, formatDayLabel]);
+
+  // Gas station layer — calculate stops and resolve real stations
+  useEffect(() => {
+    if (!map || !trip) return;
+
+    // Clear existing gas markers
+    gasMarkersRef.current.forEach(m => { m.map = null; });
+    gasMarkersRef.current = [];
+
+    if (!showGasLayer || !trip.vehicleRangeMiles || trip.vehicleRangeMiles <= 50) {
+      clearGasStops();
+      return;
+    }
+
+    // Collect all DrivingActivity objects
+    const drives = trip.days
+      .flatMap(d => d.activities ?? [])
+      .filter(a => a.type === 'driving') as import('@/types').DrivingActivity[];
+
+    if (drives.length === 0) return;
+
+    // Calculate raw stop points using cached directions results
+    const rawStops = calculateGasStops(drives, directionsCache.current, trip.vehicleRangeMiles);
+
+    // Resolve real gas stations via Places API (async)
+    resolveGasStops(rawStops, map);
+  }, [map, trip, showGasLayer, resolveGasStops, clearGasStops]);
+
+  // Render gas station markers when resolvedStops change
+  useEffect(() => {
+    if (!map) return;
+
+    // Clear previous gas markers
+    gasMarkersRef.current.forEach(m => { m.map = null; });
+    gasMarkersRef.current = [];
+
+    if (!showGasLayer) return;
+
+    gasStops.forEach(stop => {
+      const coords = stop.resolvedStation?.coordinates ?? stop.coordinates;
+      const el = document.createElement('div');
+
+      if (stop.isLimitedGasArea) {
+        // Red warning marker for limited gas areas
+        el.style.cssText = [
+          'width:32px', 'height:32px',
+          'background:#dc2626',
+          'border-radius:50%',
+          'border:2px solid white',
+          'display:flex', 'align-items:center', 'justify-content:center',
+          'font-size:14px',
+          'box-shadow:0 2px 6px rgba(0,0,0,0.4)',
+          'cursor:pointer',
+        ].join(';');
+        el.textContent = '⛽';
+        el.title = `⚠️ Limited gas — ${stop.legLabel}`;
+      } else {
+        // Amber fuel marker for normal stations
+        el.style.cssText = [
+          'width:28px', 'height:28px',
+          'background:#d97706',
+          'border-radius:50%',
+          'border:2px solid white',
+          'display:flex', 'align-items:center', 'justify-content:center',
+          'font-size:13px',
+          'box-shadow:0 2px 5px rgba(0,0,0,0.3)',
+          'cursor:pointer',
+        ].join(';');
+        el.textContent = '⛽';
+      }
+
+      const title = stop.isLimitedGasArea
+        ? `⚠️ Limited gas ahead — ${stop.legLabel} (~${stop.milesFromStart} mi)`
+        : `${stop.resolvedStation?.name ?? 'Gas Station'}${stop.resolvedStation?.rating ? ` ★${stop.resolvedStation.rating}` : ''} — ${stop.legLabel}`;
+
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        position: coords,
+        map,
+        title,
+        content: el,
+      });
+
+      // Show info window on click
+      marker.addListener('click', () => {
+        const infoContent = stop.isLimitedGasArea
+          ? `<div style="font-size:13px;padding:4px 6px"><b>⚠️ Limited Gas Area</b><br/><span style="color:#6b7280;font-size:11px">${stop.legLabel}</span><br/><span style="font-size:11px">Refuel before this point (~${stop.milesFromStart} mi into leg)</span></div>`
+          : `<div style="font-size:13px;padding:4px 6px"><b>⛽ ${stop.resolvedStation?.name ?? 'Gas Station'}</b>${stop.resolvedStation?.rating ? `<span style="color:#d97706"> ★${stop.resolvedStation.rating}</span>` : ''}<br/><span style="color:#6b7280;font-size:11px">${stop.resolvedStation?.vicinity ?? ''}</span><br/><span style="font-size:11px;color:#6b7280">${stop.legLabel} · ~${stop.milesFromStart} mi</span></div>`;
+
+        if (!driveTimeInfoWindow.current) {
+          driveTimeInfoWindow.current = new google.maps.InfoWindow();
+        }
+        driveTimeInfoWindow.current.setContent(infoContent);
+        driveTimeInfoWindow.current.setPosition(coords);
+        driveTimeInfoWindow.current.open(map);
+      });
+
+      gasMarkersRef.current.push(marker);
+    });
+  }, [map, gasStops, showGasLayer]);
 
   // Sync lodging group checkbox indeterminate state
   useEffect(() => {
@@ -857,6 +985,28 @@ export default function TripMap(props: MapProps = {}) {
                     ))}
                   </div>
 
+                  {/* Gas station layer toggle */}
+                  {trip.vehicleRangeMiles && trip.vehicleRangeMiles > 50 && (
+                    <div className="border-t pt-2 mt-1">
+                      <label className="flex items-center gap-2 cursor-pointer mb-1">
+                        <input
+                          type="checkbox"
+                          checked={showGasLayer}
+                          onChange={e => setShowGasLayer(e.target.checked)}
+                        />
+                        <span className="text-sm">⛽ Gas Stops</span>
+                      </label>
+                      {showGasLayer && gasStops.some(s => s.isLimitedGasArea) && (
+                        <p className="text-xs text-red-600 bg-red-50 rounded px-1.5 py-1 mt-1">
+                          ⚠️ Limited gas on {gasStops.filter(s => s.isLimitedGasArea).length} leg(s)
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {trip.vehicleRangeMiles === undefined && (
+                    <p className="text-xs text-gray-400 mt-1 border-t pt-2">Set tank range in Dashboard to enable gas stops</p>
+                  )}
+
                   <p className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide border-t pt-2">Days</p>
 
                   <div className="flex flex-wrap gap-1">
@@ -872,26 +1022,29 @@ export default function TripMap(props: MapProps = {}) {
                       All
                     </button>
 
-                    {/* Individual day chips */}
-                    {trip.days.map(day => (
-                      <button
-                        key={day.dayNumber}
-                        onClick={() => {
-                          setSelectedDays(prev =>
-                            prev.includes(day.dayNumber)
-                              ? prev.filter(d => d !== day.dayNumber)
-                              : [...prev, day.dayNumber]
-                          );
-                        }}
-                        className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
-                          selectedDays.includes(day.dayNumber)
-                            ? 'bg-orange-500 text-white border-orange-500'
-                            : 'bg-white text-gray-600 border-gray-300 hover:border-orange-400'
-                        }`}
-                      >
-                        {day.dayNumber}
-                      </button>
-                    ))}
+                    {/* Individual day chips — colored to match their route */}
+                    {trip.days.map((day, idx) => {
+                      const chipColor = getDayColor(idx);
+                      const isActive = selectedDays.includes(day.dayNumber);
+                      return (
+                        <button
+                          key={day.dayNumber}
+                          onClick={() => {
+                            setSelectedDays(prev =>
+                              prev.includes(day.dayNumber)
+                                ? prev.filter(d => d !== day.dayNumber)
+                                : [...prev, day.dayNumber]
+                            );
+                          }}
+                          style={isActive ? { backgroundColor: chipColor, borderColor: chipColor, color: 'white' } : { borderColor: chipColor, color: chipColor }}
+                          className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                            isActive ? '' : 'bg-white hover:opacity-80'
+                          }`}
+                        >
+                          {day.dayNumber}
+                        </button>
+                      );
+                    })}
                   </div>
                 </>
               )}
