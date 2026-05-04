@@ -23,19 +23,55 @@ function getDerivedLabel(day: Day): string {
   const driving = day.activities.find(a => a.type === 'driving' && !a.isContinuingStay) as DrivingActivity | undefined;
   if (driving?.endLocation?.name) return driving.endLocation.name;
   if (day.lodgingActivity?.name) return day.lodgingActivity.name;
-  // Find a non-driving, non-continuing activity for label
   const first = day.activities.find(a => a.type !== 'driving' && !a.isContinuingStay);
   if (first?.name) return first.name;
-  // Fallback: check continuing stay for the location name
   const continuing = day.activities.find(a => a.isContinuingStay);
   return continuing?.name ?? '';
 }
 
-function getContinuingStayName(day: Day): string | null {
+interface LodgingInfo {
+  name: string;
+  isContinuing: boolean;
+  activityId: string;
+  missingCoords: boolean;
+}
+
+function getLodgingInfo(day: Day): LodgingInfo | null {
+  // Check continuing stays first (multi-night hotel/camp from a prior day)
   const continuingLodging = day.activities.find(
     a => a.isContinuingStay && (a.type === 'hotel' || a.type === 'camping')
   );
-  return continuingLodging?.name ?? null;
+  if (continuingLodging) {
+    return {
+      name: continuingLodging.name,
+      isContinuing: true,
+      activityId: continuingLodging.id,
+      missingCoords: false,
+    };
+  }
+
+  // Find real lodging on this day (hotel or camping)
+  const candidates = day.activities.filter(
+    a => !a.isContinuingStay && (a.type === 'hotel' || a.type === 'camping')
+  );
+  if (candidates.length === 0) return null;
+
+  // Prefer isPrimary camping, then first hotel, then any
+  const primary = candidates.find(
+    a => a.type === 'camping' && (a as CampingSpot).isPrimary !== false
+  );
+  const chosen = primary ?? candidates[0];
+
+  const missingCoords =
+    chosen.type === 'camping' &&
+    (chosen.coordinates.lat === 0 && chosen.coordinates.lng === 0);
+
+  return {
+    name: chosen.name,
+    isContinuing: false,
+    activityId: chosen.id,
+    missingCoords,
+  };
 }
 
 export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps) {
@@ -65,7 +101,13 @@ export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps
   };
 
   const derivedLabel = getDerivedLabel(day);
-  const continuingStayName = getContinuingStayName(day);
+  const lodging = getLodgingInfo(day);
+
+  // Activities shown in the list — exclude the lodging that's shown in the pill
+  // (to avoid duplication when the hotel/camp is a real activity on this day)
+  const realActivities = day.activities.filter(
+    a => !a.isContinuingStay && a.id !== lodging?.activityId
+  );
 
   const handleLabelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -83,8 +125,6 @@ export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps
     if (e.key === 'Escape') setIsEditingLabel(false);
   };
 
-  const realActivities = day.activities.filter(a => !a.isContinuingStay);
-
   return (
     <div
       className={`rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden ${
@@ -98,9 +138,7 @@ export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps
           : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
         border: isSelected ? '1px solid #93c5fd' : '1px solid #e2e8f0',
       }}
-      onClick={() => {
-        setSelectedDay(day.dayNumber);
-      }}
+      onClick={() => setSelectedDay(day.dayNumber)}
     >
       {/* Top accent bar */}
       <div
@@ -165,15 +203,32 @@ export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps
           <p className="text-xs text-gray-400 mb-2">{formatDate(day.date)}</p>
         )}
 
-        {/* Continuing stay indicator (days with only a multi-night hotel) */}
-        {continuingStayName && (
-          <div className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1.5 mb-2">
-            <span className="flex-shrink-0">🏨</span>
-            <span className="truncate font-medium">Staying at {continuingStayName}</span>
+        {/* Lodging pill — always shown */}
+        {lodging ? (
+          <div className="mb-2">
+            <div className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1.5">
+              <span className="flex-shrink-0">
+                {lodging.name.toLowerCase().includes('camp') ? '⛺' : '🏨'}
+              </span>
+              <span className="truncate font-medium">
+                {lodging.isContinuing ? 'Staying at ' : 'Tonight: '}
+                {lodging.name}
+              </span>
+            </div>
+            {lodging.missingCoords && (
+              <p className="text-xs text-red-500 mt-0.5 pl-1">Missing camp coordinates</p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-2">
+            <div className="flex items-center gap-1.5 text-xs bg-red-50 rounded-lg px-2 py-1.5 border border-red-200">
+              <span className="flex-shrink-0">🏕️</span>
+              <span className="font-bold text-red-600 tracking-wide">MISSING LODGING</span>
+            </div>
           </div>
         )}
 
-        {/* Activity list */}
+        {/* Activity list — lodging already shown in pill above, excluded here */}
         {realActivities.length > 0 && (
           <div className="space-y-1 mt-1">
             {realActivities.map((activity) => (
@@ -223,8 +278,8 @@ export default function DayCard({ day, isSelected, onAddActivity }: DayCardProps
           </div>
         )}
 
-        {realActivities.length === 0 && !continuingStayName && (
-          <p className="text-xs text-gray-300 italic">No activities yet</p>
+        {realActivities.length === 0 && (
+          <p className="text-xs text-gray-300 italic">No activities planned</p>
         )}
 
         {/* Add activity button */}
