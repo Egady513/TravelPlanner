@@ -11,6 +11,7 @@ interface DayCardProps {
   day: Day;
   isSelected: boolean;
   onSelect?: () => void;
+  onAddActivity?: () => void;
 }
 
 function getDogStatus(activities: Day['activities']) {
@@ -32,16 +33,13 @@ function getDerivedLabel(day: Day): string {
 }
 
 function getContinuingStayName(day: Day): string | null {
-  // Only show "Staying at X" if ALL non-empty activities are continuing stays
-  const realActivities = day.activities.filter(a => !a.isContinuingStay);
-  if (realActivities.length > 0) return null;
   const continuingLodging = day.activities.find(
     a => a.isContinuingStay && (a.type === 'hotel' || a.type === 'camping')
   );
   return continuingLodging?.name ?? null;
 }
 
-export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
+export default function DayCard({ day, isSelected, onSelect, onAddActivity }: DayCardProps) {
   const { setSelectedDay, removeActivity, setDayWeather, setDayLocationLabel } = useTrip();
   const dogStatus = getDogStatus(day.activities);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
@@ -103,7 +101,6 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
       }}
       onClick={() => {
         setSelectedDay(day.dayNumber);
-        onSelect?.();
       }}
     >
       {/* Top accent bar */}
@@ -229,6 +226,24 @@ export default function DayCard({ day, isSelected, onSelect }: DayCardProps) {
 
         {realActivities.length === 0 && !continuingStayName && (
           <p className="text-xs text-gray-300 italic">No activities yet</p>
+        )}
+
+        {/* Add activity button */}
+        {onAddActivity && (
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedDay(day.dayNumber);
+                onAddActivity();
+              }}
+              className="text-xs text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-full w-6 h-6 flex items-center justify-center transition-colors border border-transparent hover:border-orange-200"
+              aria-label="Add activity"
+              title="Add activity"
+            >
+              +
+            </button>
+          </div>
         )}
       </div>
     </div>
