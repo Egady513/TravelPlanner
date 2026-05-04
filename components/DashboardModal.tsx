@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useTrip } from '@/lib/store';
 
 interface DashboardModalProps {
