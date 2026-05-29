@@ -21,20 +21,34 @@ export default function DashboardModal({ onClose }: DashboardModalProps) {
 
   const totalDays = trip.days.length;
   const drivingDays = trip.days.filter(d => d.activities.some(a => a.type === 'driving')).length;
-  const campingNights = trip.days.flatMap(d => d.activities)
-    .filter(a => a.type === 'camping' && !a.isContinuingStay)
-    .reduce((sum, a) => sum + ((a as { nights?: number }).nights ?? 1), 0);
-  const hotelNights = trip.days.flatMap(d => d.activities)
-    .filter(a => a.type === 'hotel' && !a.isContinuingStay)
-    .reduce((sum, a) => sum + ((a as { nights?: number }).nights ?? 1), 0);
+
+  // Real (counted) lodging = source anchor + primary site + de-duped per (day,type,name).
+  // Excludes: continuing-stay copies, backup options (isPrimary === false),
+  // and accidental duplicate anchors on the same day.
+  const lodgingSeen = new Set<string>();
+  const realLodging = trip.days.flatMap(d => d.activities)
+    .filter(a => (a.type === 'hotel' || a.type === 'camping') && !a.isContinuingStay)
+    .filter(a => (a as { isPrimary?: boolean }).isPrimary !== false)
+    .filter(a => {
+      const key = `${a.dayNumber}|${a.type}|${a.name}`;
+      if (lodgingSeen.has(key)) return false;
+      lodgingSeen.add(key);
+      return true;
+    });
+
+  const sumNights = (type: 'hotel' | 'camping') =>
+    realLodging
+      .filter(a => a.type === type)
+      .reduce((sum, a) => sum + ((a as { nights?: number }).nights ?? 1), 0);
+
+  const hotelNights = sumNights('hotel');
+  const campingNights = sumNights('camping');
   const dogFriendlyDays = trip.days.filter(d => d.activities.every(a => a.isDogFriendly !== false)).length;
 
-  const lodgingCost = trip.days.flatMap(d => d.activities)
-    .filter(a => (a.type === 'hotel' || a.type === 'camping') && !a.isContinuingStay)
-    .reduce((sum, a) => {
-      const act = a as { pricePerNight?: number; nights?: number };
-      return sum + (act.pricePerNight ?? 0) * (act.nights ?? 1);
-    }, 0);
+  const lodgingCost = realLodging.reduce((sum, a) => {
+    const act = a as { pricePerNight?: number; nights?: number };
+    return sum + (act.pricePerNight ?? 0) * (act.nights ?? 1);
+  }, 0);
 
   const ticketActivities = trip.days.flatMap(d =>
     d.activities
