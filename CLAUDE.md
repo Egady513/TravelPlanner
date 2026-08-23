@@ -1,5 +1,16 @@
 # Road Trip Planner — Claude Agent Context
 
+> ## 👉 READ `AGENTS.md` IN THIS REPO FIRST
+> It is the shared contract for **all** AI tools (Claude Code, Codex, ChatGPT).
+> It carries Rule 0 (review recent commits before any new work), the commit
+> tagging convention, branch rules, the QA gate rule, writing conventions and
+> the 513Sips color palette. This file holds Claude-specific notes only and
+> defers to `AGENTS.md` on anything shared.
+
+> Vault path, Eddie's identity, and save protocol: `~/.claude/CLAUDE.md` (global — always loaded)
+> Vault: `C:\Users\eddie.gady\OneDrive - Centric Consulting\Eddie\Obsidian Brain\`
+> Vault MOC for this project: `01-MOC\MOC-Travel-Planner.md`
+
 ## Tech Stack
 - **Framework:** Next.js 14 App Router (no `src/` dir, `@/` alias maps to root)
 - **Language:** TypeScript (strict)
